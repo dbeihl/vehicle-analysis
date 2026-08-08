@@ -1,0 +1,902 @@
+{
+  "Chevrolet Tahoe": {
+    "make": "Chevrolet",
+    "model": "Tahoe",
+    "by_year": {
+      "2019": 2,
+      "2021": 16,
+      "2023": 5
+    },
+    "per_year": 7.67,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "Chevrolet Suburban": {
+    "make": "Chevrolet",
+    "model": "Suburban",
+    "by_year": {
+      "2019": 3,
+      "2021": 12,
+      "2023": 3
+    },
+    "per_year": 6.0,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "GMC Yukon": {
+    "make": "GMC",
+    "model": "Yukon",
+    "by_year": {
+      "2019": 2,
+      "2021": 13,
+      "2023": 4
+    },
+    "per_year": 6.33,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "GMC Yukon XL": {
+    "make": "GMC",
+    "model": "Yukon XL",
+    "by_year": {
+      "2019": 2,
+      "2021": 12,
+      "2023": 4
+    },
+    "per_year": 6.0,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "Ford Expedition": {
+    "make": "Ford",
+    "model": "Expedition",
+    "by_year": {
+      "2019": 11,
+      "2021": 12,
+      "2023": 8
+    },
+    "per_year": 10.33,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Toyota Sequoia (pre-2023 5.7 V8)": {
+    "make": "Toyota",
+    "model": "Sequoia",
+    "by_year": {
+      "2019": 6,
+      "2021": 2
+    },
+    "per_year": 4.0,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Nissan Armada": {
+    "make": "Nissan",
+    "model": "Armada",
+    "by_year": {
+      "2019": 1,
+      "2021": 2,
+      "2023": 1
+    },
+    "per_year": 1.33,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Cadillac Escalade": {
+    "make": "Cadillac",
+    "model": "Escalade",
+    "by_year": {
+      "2021": 9,
+      "2023": 4
+    },
+    "per_year": 6.5,
+    "powertrain_years": [
+      2021
+    ],
+    "years_sampled": 2
+  },
+  "Jeep Grand Wagoneer": {
+    "make": "Jeep",
+    "model": "Grand Wagoneer",
+    "by_year": {
+      "2023": 7
+    },
+    "per_year": 7.0,
+    "powertrain_years": [],
+    "years_sampled": 1
+  },
+  "Jeep Grand Cherokee": {
+    "make": "Jeep",
+    "model": "Grand Cherokee",
+    "by_year": {
+      "2019": 7,
+      "2021": 12,
+      "2023": 20
+    },
+    "per_year": 13.0,
+    "powertrain_years": [
+      2019,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Jeep Grand Cherokee L": {
+    "make": "Jeep",
+    "model": "Grand Cherokee L",
+    "by_year": {
+      "2021": 3,
+      "2023": 5
+    },
+    "per_year": 4.0,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Jeep Cherokee": {
+    "make": "Jeep",
+    "model": "Cherokee",
+    "by_year": {
+      "2019": 11,
+      "2021": 4,
+      "2023": 1
+    },
+    "per_year": 5.33,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Jeep Compass": {
+    "make": "Jeep",
+    "model": "Compass",
+    "by_year": {
+      "2019": 2,
+      "2023": 2
+    },
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Jeep Gladiator": {
+    "make": "Jeep",
+    "model": "Gladiator",
+    "by_year": {
+      "2021": 8,
+      "2023": 6
+    },
+    "per_year": 7.0,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "years_sampled": 2
+  },
+  "Jeep Wrangler": {
+    "make": "Jeep",
+    "model": "Wrangler",
+    "by_year": {
+      "2019": 9,
+      "2021": 15,
+      "2023": 14
+    },
+    "per_year": 12.67,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Jeep Wrangler 4xe": {
+    "make": "Jeep",
+    "model": "Wrangler 4xe",
+    "by_year": {
+      "2021": 2,
+      "2023": 3
+    },
+    "per_year": 2.5,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Ford Explorer": {
+    "make": "Ford",
+    "model": "Explorer",
+    "by_year": {
+      "2019": 6,
+      "2021": 26,
+      "2023": 15
+    },
+    "per_year": 15.67,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Chevrolet Traverse": {
+    "make": "Chevrolet",
+    "model": "Traverse",
+    "by_year": {
+      "2019": 3,
+      "2021": 3,
+      "2023": 2
+    },
+    "per_year": 2.67,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "GMC Acadia": {
+    "make": "GMC",
+    "model": "Acadia",
+    "by_year": {
+      "2019": 2,
+      "2021": 2,
+      "2023": 4
+    },
+    "per_year": 2.67,
+    "powertrain_years": [
+      2019,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Honda Passport": {
+    "make": "Honda",
+    "model": "Passport",
+    "by_year": {
+      "2019": 10,
+      "2021": 7,
+      "2023": 5
+    },
+    "per_year": 7.33,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Toyota Highlander (gas)": {
+    "make": "Toyota",
+    "model": "Highlander",
+    "by_year": {
+      "2019": 3,
+      "2021": 4,
+      "2023": 9
+    },
+    "per_year": 5.33,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Toyota Highlander Hybrid": {
+    "make": "Toyota",
+    "model": "Highlander Hybrid",
+    "by_year": {
+      "2021": 4,
+      "2023": 6
+    },
+    "per_year": 5.0,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Kia Telluride": {
+    "make": "Kia",
+    "model": "Telluride",
+    "by_year": {
+      "2021": 5,
+      "2023": 6
+    },
+    "per_year": 5.5,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "years_sampled": 2
+  },
+  "Hyundai Palisade": {
+    "make": "Hyundai",
+    "model": "Palisade",
+    "by_year": {
+      "2021": 6,
+      "2023": 5
+    },
+    "per_year": 5.5,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 2
+  },
+  "Mazda CX-9": {
+    "make": "Mazda",
+    "model": "CX-9",
+    "by_year": {
+      "2019": 2,
+      "2021": 1
+    },
+    "per_year": 1.5,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Subaru Ascent": {
+    "make": "Subaru",
+    "model": "Ascent",
+    "by_year": {
+      "2019": 9,
+      "2021": 2,
+      "2023": 4
+    },
+    "per_year": 5.0,
+    "powertrain_years": [
+      2019,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Nissan Pathfinder (2022+)": {
+    "make": "Nissan",
+    "model": "Pathfinder",
+    "by_year": {
+      "2019": 2,
+      "2023": 1
+    },
+    "per_year": 1.5,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Volkswagen Atlas": {
+    "make": "Volkswagen",
+    "model": "Atlas",
+    "by_year": {
+      "2019": 11,
+      "2021": 17,
+      "2023": 5
+    },
+    "per_year": 11.0,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Dodge Durango": {
+    "make": "Dodge",
+    "model": "Durango",
+    "by_year": {
+      "2019": 4,
+      "2021": 7,
+      "2023": 1
+    },
+    "per_year": 4.0,
+    "powertrain_years": [
+      2019,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Subaru Outback": {
+    "make": "Subaru",
+    "model": "Outback",
+    "by_year": {
+      "2019": 3,
+      "2021": 4,
+      "2023": 2
+    },
+    "per_year": 3.0,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Subaru Forester": {
+    "make": "Subaru",
+    "model": "Forester",
+    "by_year": {
+      "2019": 3,
+      "2023": 1
+    },
+    "per_year": 2.0,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 2
+  },
+  "Mazda CX-5": {
+    "make": "Mazda",
+    "model": "CX-5",
+    "by_year": {
+      "2019": 2
+    },
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "years_sampled": 1
+  },
+  "Nissan Rogue": {
+    "make": "Nissan",
+    "model": "Rogue",
+    "by_year": {
+      "2019": 3,
+      "2021": 10,
+      "2023": 6
+    },
+    "per_year": 6.33,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Hyundai Tucson": {
+    "make": "Hyundai",
+    "model": "Tucson",
+    "by_year": {
+      "2019": 1,
+      "2021": 1,
+      "2023": 2
+    },
+    "per_year": 1.33,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Hyundai Santa Fe": {
+    "make": "Hyundai",
+    "model": "Santa Fe",
+    "by_year": {
+      "2019": 2,
+      "2021": 7,
+      "2023": 1
+    },
+    "per_year": 3.33,
+    "powertrain_years": [
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "Kia Sportage": {
+    "make": "Kia",
+    "model": "Sportage",
+    "by_year": {
+      "2019": 2,
+      "2021": 2,
+      "2023": 6
+    },
+    "per_year": 3.33,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Kia Sorento": {
+    "make": "Kia",
+    "model": "Sorento",
+    "by_year": {
+      "2019": 2,
+      "2021": 4,
+      "2023": 3
+    },
+    "per_year": 3.0,
+    "powertrain_years": [
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "Ford Edge": {
+    "make": "Ford",
+    "model": "Edge",
+    "by_year": {
+      "2019": 3,
+      "2021": 7,
+      "2023": 4
+    },
+    "per_year": 4.67,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "Chevrolet Equinox": {
+    "make": "Chevrolet",
+    "model": "Equinox",
+    "by_year": {
+      "2019": 4,
+      "2021": 4,
+      "2023": 3
+    },
+    "per_year": 3.67,
+    "powertrain_years": [
+      2019
+    ],
+    "years_sampled": 3
+  },
+  "Toyota Venza": {
+    "make": "Toyota",
+    "model": "Venza",
+    "by_year": {
+      "2021": 1,
+      "2023": 1
+    },
+    "per_year": 1.0,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Honda HR-V": {
+    "make": "Honda",
+    "model": "HR-V",
+    "by_year": {
+      "2019": 7,
+      "2021": 4,
+      "2023": 3
+    },
+    "per_year": 4.67,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Lexus RX Hybrid": {
+    "make": "Lexus",
+    "model": "RX Hybrid",
+    "by_year": {
+      "2021": 1,
+      "2023": 2
+    },
+    "per_year": 1.5,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Lexus NX Hybrid": {
+    "make": "Lexus",
+    "model": "NX Hybrid",
+    "by_year": {
+      "2023": 2
+    },
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "years_sampled": 1
+  },
+  "Toyota RAV4 Hybrid": {
+    "make": "Toyota",
+    "model": "RAV4 Hybrid",
+    "by_year": {
+      "2019": 3,
+      "2021": 1,
+      "2023": 1
+    },
+    "per_year": 1.67,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Toyota RAV4 (gas)": {
+    "make": "Toyota",
+    "model": "RAV4",
+    "by_year": {
+      "2019": 7,
+      "2021": 1,
+      "2023": 3
+    },
+    "per_year": 3.67,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Honda CR-V": {
+    "make": "Honda",
+    "model": "CR-V",
+    "by_year": {
+      "2019": 8,
+      "2021": 4,
+      "2023": 3
+    },
+    "per_year": 5.0,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Honda CR-V Hybrid": {
+    "make": "Honda",
+    "model": "CR-V Hybrid",
+    "by_year": {
+      "2021": 3,
+      "2023": 5
+    },
+    "per_year": 4.0,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 2
+  },
+  "Honda Pilot": {
+    "make": "Honda",
+    "model": "Pilot",
+    "by_year": {
+      "2019": 13,
+      "2021": 10,
+      "2023": 5
+    },
+    "per_year": 9.33,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Ford Escape Hybrid": {
+    "make": "Ford",
+    "model": "Escape Hybrid",
+    "by_year": {
+      "2021": 1
+    },
+    "per_year": 1.0,
+    "powertrain_years": [],
+    "years_sampled": 1
+  },
+  "Hyundai Santa Fe Hybrid": {
+    "make": "Hyundai",
+    "model": "Santa Fe Hybrid",
+    "by_year": {
+      "2021": 3,
+      "2023": 1
+    },
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Kia Sorento Hybrid": {
+    "make": "Kia",
+    "model": "Sorento Hybrid",
+    "by_year": {
+      "2021": 2,
+      "2023": 2
+    },
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Toyota Sienna Hybrid": {
+    "make": "Toyota",
+    "model": "Sienna Hybrid",
+    "by_year": {
+      "2021": 2,
+      "2023": 1
+    },
+    "per_year": 1.5,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Toyota Tacoma (pre-2024 V6)": {
+    "make": "Toyota",
+    "model": "Tacoma",
+    "by_year": {
+      "2019": 4,
+      "2023": 4
+    },
+    "per_year": 4.0,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 2
+  },
+  "Toyota 4Runner": {
+    "make": "Toyota",
+    "model": "4Runner",
+    "by_year": {
+      "2019": 4,
+      "2021": 1,
+      "2023": 1
+    },
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Toyota Tundra (2007-2021 5.7 V8)": {
+    "make": "Toyota",
+    "model": "Tundra",
+    "by_year": {
+      "2019": 10,
+      "2021": 3,
+      "2023": 13
+    },
+    "per_year": 8.67,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Chevrolet Silverado 1500": {
+    "make": "Chevrolet",
+    "model": "Silverado 1500",
+    "by_year": {
+      "2019": 10,
+      "2021": 8,
+      "2023": 3
+    },
+    "per_year": 7.0,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "GMC Sierra 1500": {
+    "make": "GMC",
+    "model": "Sierra 1500",
+    "by_year": {
+      "2019": 10,
+      "2021": 7,
+      "2023": 3
+    },
+    "per_year": 6.67,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "Ford F-150": {
+    "make": "Ford",
+    "model": "F-150",
+    "by_year": {
+      "2019": 9,
+      "2021": 29,
+      "2023": 12
+    },
+    "per_year": 16.67,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Ram 1500": {
+    "make": "Ram",
+    "model": "1500",
+    "by_year": {
+      "2019": 30,
+      "2021": 15,
+      "2023": 11
+    },
+    "per_year": 18.67,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Ford Ranger": {
+    "make": "Ford",
+    "model": "Ranger",
+    "by_year": {
+      "2019": 11,
+      "2021": 6,
+      "2023": 4
+    },
+    "per_year": 7.0,
+    "powertrain_years": [
+      2019
+    ],
+    "years_sampled": 3
+  },
+  "Chevrolet Colorado": {
+    "make": "Chevrolet",
+    "model": "Colorado",
+    "by_year": {
+      "2021": 1,
+      "2023": 3
+    },
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "GMC Canyon": {
+    "make": "GMC",
+    "model": "Canyon",
+    "by_year": {
+      "2021": 2,
+      "2023": 3
+    },
+    "per_year": 2.5,
+    "powertrain_years": [],
+    "years_sampled": 2
+  },
+  "Nissan Frontier (2022+)": {
+    "make": "Nissan",
+    "model": "Frontier",
+    "by_year": {
+      "2019": 1,
+      "2021": 2,
+      "2023": 1
+    },
+    "per_year": 1.33,
+    "powertrain_years": [
+      2021
+    ],
+    "years_sampled": 3
+  },
+  "Nissan Titan": {
+    "make": "Nissan",
+    "model": "Titan",
+    "by_year": {
+      "2019": 4,
+      "2021": 5,
+      "2023": 2
+    },
+    "per_year": 3.67,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  },
+  "Honda Ridgeline": {
+    "make": "Honda",
+    "model": "Ridgeline",
+    "by_year": {
+      "2019": 12,
+      "2021": 7,
+      "2023": 5
+    },
+    "per_year": 8.0,
+    "powertrain_years": [],
+    "years_sampled": 3
+  },
+  "Ford Maverick Hybrid": {
+    "make": "Ford",
+    "model": "Maverick Hybrid",
+    "by_year": {
+      "2023": 1
+    },
+    "per_year": 1.0,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 1
+  },
+  "Ford Maverick (2.0T)": {
+    "make": "Ford",
+    "model": "Maverick",
+    "by_year": {
+      "2023": 21
+    },
+    "per_year": 21.0,
+    "powertrain_years": [
+      2023
+    ],
+    "years_sampled": 1
+  },
+  "Ford F-250 (HD)": {
+    "make": "Ford",
+    "model": "F-250",
+    "by_year": {
+      "2019": 4
+    },
+    "per_year": 4.0,
+    "powertrain_years": [
+      2019
+    ],
+    "years_sampled": 1
+  },
+  "Ram 2500 (Cummins)": {
+    "make": "Ram",
+    "model": "2500",
+    "by_year": {
+      "2019": 12,
+      "2021": 8,
+      "2023": 8
+    },
+    "per_year": 9.33,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "years_sampled": 3
+  }
+}

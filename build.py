@@ -50,17 +50,36 @@ def repair_reserve(inp):
     return sum(m * r for m, r in bands) / miles
 
 
+def resale_multiplier(v, inp):
+    """Resale strength relative to the industry-average 5-year depreciation."""
+    return (1 - v['deprec_5yr']) / (1 - inp['industry_avg_5yr_deprec'])
+
+
+def buy_price(v, inp):
+    """Price at the buy odometer.
+
+    Derived from MSRP through the retention curve when a verified MSRP exists,
+    so the number carries a year, a trim, and a source. Rows without one fall
+    back to the original placeholder, which records none of those and therefore
+    cannot be checked -- that is the point of the msrp columns.
+    """
+    if not v.get('msrp'):
+        return float(v['price']), 'placeholder'
+    idx = retention_index(inp['buy_odometer'], inp['retention_anchors'])
+    return float(v['msrp']) * idx * resale_multiplier(v, inp), 'msrp'
+
+
 def cost_per_mile(v, inp):
     """All-in dollars per mile over one ownership cycle. Mirrors Models!AB."""
     miles = inp['sell_odometer'] - inp['buy_odometer']
     years = miles / inp['annual_miles']
     anchors = inp['retention_anchors']
 
-    # Resale strength relative to the industry-average 5-year depreciation.
-    resale_mult = (1 - v['deprec_5yr']) / (1 - inp['industry_avg_5yr_deprec'])
+    price, _ = buy_price(v, inp)
+    resale_mult = resale_multiplier(v, inp)
     ratio = (retention_index(inp['sell_odometer'], anchors)
              / retention_index(inp['buy_odometer'], anchors))
-    resale = min(v['price'], v['price'] * ratio * resale_mult)
+    resale = min(price, price * ratio * resale_mult)
 
     fuel = (inp['diesel_per_gal'] if v['fuel'] == 'Diesel'
             else inp['gas_per_gal']) / v['mpg']
@@ -68,19 +87,19 @@ def cost_per_mile(v, inp):
              else inp['tire_set_crossover']) / inp['tire_life_miles']
 
     if inp['financing_mode'] == 'cash':
-        capital = (v['price'] + resale) / 2 * inp['cash_opportunity_rate']
+        capital = (price + resale) / 2 * inp['cash_opportunity_rate']
     else:
-        financed = v['price'] * (1 - inp['down_payment_pct'])
+        financed = price * (1 - inp['down_payment_pct'])
         capital = (financed * inp['avg_outstanding_balance_factor'] * inp['loan_apr']
-                   + v['price'] * inp['down_payment_pct'] * inp['cash_opportunity_rate'])
+                   + price * inp['down_payment_pct'] * inp['cash_opportunity_rate'])
 
-    return ((v['price'] - resale) / miles                       # depreciation
+    return ((price - resale) / miles                           # depreciation
             + fuel + tires
             + inp['scheduled_maint_per_mile']
             + repair_reserve(inp)
             + (inp['insurance_per_year'] + inp['registration_per_year'])
             / inp['annual_miles']
-            + v['price'] * inp['sales_tax_rate'] / miles        # one-time, spread
+            + price * inp['sales_tax_rate'] / miles             # one-time, spread
             + capital * years / miles)
 
 
@@ -123,7 +142,7 @@ def build_models(rows, inp):
     for v, cpm in zip(rows, cpms):
         out.append({
             'name': v['name'], 'cat': v['category'], 'tier': v['tier'],
-            'price': int(v['price']), 'mpg': num(v['mpg']), 'fuel': v['fuel'],
+            'price': int(round(buy_price(v, inp)[0])), 'mpg': num(v['mpg']), 'fuel': v['fuel'],
             'gvwr': v['gvwr_note'],
             'cpm': round(cpm, 3),
             'peryr': round(cpm * inp['annual_miles']),

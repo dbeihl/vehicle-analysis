@@ -37,7 +37,12 @@ EXPECTED_FRONTIER = {'Toyota Highlander Hybrid', 'Toyota Venza',
 
 
 def main():
-    models = {m['name']: m for m in build.build_models(build.load(), build.INPUTS)}
+    # Validate the ENGINE against the workbook, not the data. The workbook was
+    # built on the original placeholder prices, so rows since repriced from a
+    # verified MSRP will legitimately disagree. Stripping msrp here keeps this
+    # check meaningful: it fails on formula drift, not on intentional data edits.
+    rows = [dict(r, msrp='') for r in build.load()]
+    models = {m['name']: m for m in build.build_models(rows, build.INPUTS)}
 
     for name, expected in PUBLISHED_CPM.items():
         assert name in models, f'{name} missing from data/vehicles.csv'
