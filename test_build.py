@@ -30,6 +30,11 @@ BALANCED = {'cost': 25, 'quality': 15, 'longevity': 15,
             'efficiency': 10, 'reliability': 20, 'comfort': 15}
 EXPECTED_WINNER, EXPECTED_SCORE = 'Toyota Highlander Hybrid', 89.9
 
+# The four the page reports undominated at those weights. Everything else is
+# beaten on both cost and value by something on this list.
+EXPECTED_FRONTIER = {'Toyota Highlander Hybrid', 'Toyota Venza',
+                     'Ford Escape Hybrid', 'Honda HR-V'}
+
 
 def main():
     models = {m['name']: m for m in build.build_models(build.load(), build.INPUTS)}
@@ -49,13 +54,21 @@ def main():
     assert abs(score - EXPECTED_SCORE) < 0.05, \
         f'balanced-six score {score:.1f}, workbook says {EXPECTED_SCORE}'
 
-    # A dominated vehicle must never reach the frontier: something beats it on both.
-    frontier = [m for m in models.values()
+    # Reproduce the frontier the page draws: cost against the weighted value of
+    # the other five axes. Asserting the frontier is merely non-empty proves
+    # nothing -- the cheapest vehicle is undominated by construction.
+    value_axes = {k: w for k, w in BALANCED.items() if k != 'cost'}
+    total = sum(value_axes.values())
+    for m in models.values():
+        m['value'] = sum(w * m[k] for k, w in value_axes.items()) / total
+
+    frontier = {m['name'] for m in models.values()
                 if not any(o is not m and o['cost'] >= m['cost']
-                           and o['quality'] >= m['quality']
-                           and (o['cost'] > m['cost'] or o['quality'] > m['quality'])
-                           for o in models.values())]
-    assert frontier, 'frontier is empty -- domination logic is inverted'
+                           and o['value'] >= m['value']
+                           and (o['cost'] > m['cost'] or o['value'] > m['value'])
+                           for o in models.values())}
+    assert frontier == EXPECTED_FRONTIER, \
+        f'frontier changed: {sorted(frontier)} != {sorted(EXPECTED_FRONTIER)}'
 
     print(f'ok: {len(PUBLISHED_CPM)} published $/mile figures match, '
           f'balanced-six = {winner} at {score:.1f} ({len(models)} vehicles)')
