@@ -63,6 +63,8 @@ def buy_price(v, inp):
     back to the original placeholder, which records none of those and therefore
     cannot be checked -- that is the point of the msrp columns.
     """
+    if v.get('observed_price'):
+        return float(v['observed_price']), 'observed'   # a real listing beats any model
     if not v.get('msrp'):
         return float(v['price']), 'placeholder'
     idx = retention_index(inp['buy_odometer'], inp['retention_anchors'])
