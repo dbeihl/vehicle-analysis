@@ -10,10 +10,25 @@ Seventy-six vehicles plotted on two axes. The ones on the efficient frontier are
 
 | Path | What it is |
 | ---- | ---------- |
-| `index.html` | The interactive frontier explorer. Self-contained: no dependencies, no build step |
-| `vehicle-turnover-planner.xlsx` | The cost engine. 11 tabs, ~3,170 live formulas |
+| `data/vehicles.csv` | The dataset. One row per vehicle, observations and judgments only |
+| `data/inputs.json` | Every cost assumption — fuel, tires, repair reserve, the depreciation curve |
+| `build.py` | Computes cost per mile and the scoring axes, writes them into `index.html` |
+| `test_build.py` | Checks the cost engine against figures the workbook published independently |
+| `index.html` | The interactive frontier explorer. Generated, but self-contained once built |
+| `vehicle-turnover-planner.xlsx` | The original cost engine. 11 tabs, ~3,170 live formulas |
 
-Open `index.html` in a browser to run it locally. There is nothing to install.
+Open `index.html` in a browser to run it. Nothing to install — the page has no dependencies.
+
+To change the data, edit `data/vehicles.csv` or `data/inputs.json`, then:
+
+```bash
+python3 build.py        # regenerate index.html
+python3 test_build.py   # confirm the cost engine still agrees with the workbook
+```
+
+`build.py --check` fails instead of rewriting, for use in CI or a pre-commit hook.
+
+Derived values — cost per mile, the 0–100 cost and efficiency axes — are never stored in the CSV. Adding a vehicle means adding a row.
 
 ## The six axes are not equally trustworthy
 

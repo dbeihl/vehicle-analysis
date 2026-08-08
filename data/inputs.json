@@ -1,0 +1,76 @@
+{
+  "_comment": "Inputs tab of vehicle-turnover-planner.xlsx. Sources on the Sources tab.",
+  "annual_miles": 55000,
+  "buy_odometer": 40000,
+  "sell_odometer": 180000,
+  "gas_per_gal": 3.55,
+  "diesel_per_gal": 5.35,
+  "tire_set_crossover": 900,
+  "tire_set_truck": 1300,
+  "tire_life_miles": 55000,
+  "scheduled_maint_per_mile": 0.08,
+  "insurance_per_year": 1600,
+  "registration_per_year": 450,
+  "repair_reserve_per_mile": {
+    "under_100k": 0.03,
+    "100k_to_150k": 0.06,
+    "over_150k": 0.1
+  },
+  "financing_mode": "cash",
+  "cash_opportunity_rate": 0.045,
+  "loan_apr": 0.065,
+  "down_payment_pct": 0.2,
+  "avg_outstanding_balance_factor": 0.55,
+  "sales_tax_rate": 0.07,
+  "industry_avg_5yr_deprec": 0.418,
+  "retention_anchors": [
+    [
+      0,
+      35000
+    ],
+    [
+      10000,
+      33900
+    ],
+    [
+      25000,
+      33480
+    ],
+    [
+      50000,
+      26000
+    ],
+    [
+      75000,
+      18995
+    ],
+    [
+      100000,
+      14500
+    ],
+    [
+      125000,
+      10950
+    ],
+    [
+      150000,
+      8900
+    ],
+    [
+      200000,
+      6450
+    ],
+    [
+      250000,
+      4500
+    ]
+  ],
+  "default_weights": {
+    "cost": 25,
+    "quality": 15,
+    "longevity": 15,
+    "efficiency": 10,
+    "reliability": 20,
+    "comfort": 15
+  }
+}
