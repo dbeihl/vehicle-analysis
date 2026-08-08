@@ -75,6 +75,18 @@ def main():
     assert frontier == EXPECTED_FRONTIER, \
         f'frontier changed: {sorted(frontier)} != {sorted(EXPECTED_FRONTIER)}'
 
+    # Price provenance, checked against the real rows rather than the stripped
+    # ones. A price with no recorded year, source, or trim is indistinguishable
+    # from a verified one by the time it reaches the page.
+    real = build.load()
+    problems = build.price_problems(real)
+    assert not problems, 'price provenance incomplete:\n  ' + '\n  '.join(problems)
+
+    bases = {build.buy_price(v, build.INPUTS)[1] for v in real}
+    assert bases <= {'observed', 'placeholder'}, \
+        f'unexpected price basis {bases - {"observed", "placeholder"}} -- ' \
+        'MSRP-through-the-curve was retired, it double-penalised at the 3-year buy point'
+
     print(f'ok: {len(PUBLISHED_CPM)} published $/mile figures match, '
           f'balanced-six = {winner} at {score:.1f} ({len(models)} vehicles)')
 

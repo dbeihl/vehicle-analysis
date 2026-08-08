@@ -56,19 +56,46 @@ def resale_multiplier(v, inp):
 
 
 def buy_price(v, inp):
-    """Price at the buy odometer.
+    """Price at the buy odometer, and the basis it came from.
 
-    Derived from MSRP through the retention curve when a verified MSRP exists,
-    so the number carries a year, a trim, and a source. Rows without one fall
-    back to the original placeholder, which records none of those and therefore
-    cannot be checked -- that is the point of the msrp columns.
+    Observed market listings only. MSRP-through-the-curve was tried and
+    retired: resale_multiplier is built from FIVE-year depreciation but the buy
+    point is a ~3-year-old vehicle, so fast-depreciating models get penalised
+    twice. It put the 2023 Escalade at $50,941 against an observed $70,777
+    across three listing services -- worse than the placeholder it replaced.
+
+    msrp/msrp_year/msrp_trim are kept as reference only. They record what a
+    vehicle costs new; they no longer compute what a used one costs.
     """
     if v.get('observed_price'):
-        return float(v['observed_price']), 'observed'   # a real listing beats any model
-    if not v.get('msrp'):
-        return float(v['price']), 'placeholder'
-    idx = retention_index(inp['buy_odometer'], inp['retention_anchors'])
-    return float(v['msrp']) * idx * resale_multiplier(v, inp), 'msrp'
+        return float(v['observed_price']), 'observed'
+    return float(v['price']), 'placeholder'
+
+
+def price_problems(rows):
+    """Data-integrity checks on price provenance. Empty list means clean.
+
+    Unknown provenance has to be an error rather than a silent default, or the
+    check is decorative -- a placeholder that nobody flags reads exactly like a
+    verified figure once it reaches the page.
+    """
+    problems = []
+    for v in rows:
+        name = v['name']
+        if v.get('observed_price'):
+            if not v.get('price_year'):
+                problems.append(f'{name}: observed_price without price_year')
+            if not v.get('price_source'):
+                problems.append(f'{name}: observed_price without price_source')
+        if v.get('msrp'):
+            if not v.get('msrp_year'):
+                problems.append(f'{name}: msrp without msrp_year')
+            if not v.get('msrp_trim'):
+                problems.append(f'{name}: msrp without msrp_trim -- trim '
+                                f'unstated, and trims span $7,655 on one nameplate')
+            if not v.get('msrp_source'):
+                problems.append(f'{name}: msrp without msrp_source')
+    return problems
 
 
 def cost_per_mile(v, inp):
@@ -142,9 +169,11 @@ def build_models(rows, inp):
 
     out = []
     for v, cpm in zip(rows, cpms):
+        price, basis = buy_price(v, inp)
         out.append({
             'name': v['name'], 'cat': v['category'], 'tier': v['tier'],
-            'price': int(round(buy_price(v, inp)[0])), 'mpg': num(v['mpg']), 'fuel': v['fuel'],
+            'price': int(round(price)), 'priceBasis': basis,
+            'priceYear': v.get('price_year') or '', 'mpg': num(v['mpg']), 'fuel': v['fuel'],
             'gvwr': v['gvwr_note'],
             'cpm': round(cpm, 3),
             'peryr': round(cpm * inp['annual_miles']),
@@ -175,16 +204,26 @@ def main():
 
     path = ROOT / 'index.html'
     html = path.read_text()
-    models = build_models(load(), INPUTS)
+    rows = load()
+
+    problems = price_problems(rows)
+    if problems:
+        sys.exit('price provenance is incomplete:\n  '
+                 + '\n  '.join(problems))
+
+    models = build_models(rows, INPUTS)
+    observed = sum(1 for m in models if m['priceBasis'] == 'observed')
     updated = render(html, models)
 
     if args.check:
         if updated != html:
             sys.exit('index.html is stale -- run: python3 build.py')
-        print(f'index.html up to date ({len(models)} vehicles)')
+        print(f'index.html up to date ({len(models)} vehicles, '
+              f'{observed} observed / {len(models) - observed} placeholder)')
         return
     path.write_text(updated)
-    print(f'wrote index.html ({len(models)} vehicles)')
+    print(f'wrote index.html ({len(models)} vehicles, '
+          f'{observed} observed / {len(models) - observed} placeholder)')
 
 
 if __name__ == '__main__':
