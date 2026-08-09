@@ -27,38 +27,6 @@ REQUIRED_ENGINE_FIELDS = ('price', 'mpg', 'fuel', 'deprec5yr', 'tireClass',
                           'observedPrice', 'observedAt')
 
 
-def retention_index(odometer, anchors):
-    """Linear interpolation over the odometer/median-price anchor table.
-
-    Depreciation!C21:C22. Indexed against the zero-mile anchor, so a vehicle at
-    0 miles is 1.0. Flat extrapolation past the ends of the table.
-    """
-    base = anchors[0][1]
-    if odometer <= anchors[0][0]:
-        return anchors[0][1] / base
-    for (x0, y0), (x1, y1) in zip(anchors, anchors[1:]):
-        if odometer <= x1:
-            span = (odometer - x0) / (x1 - x0)
-            return (y0 + span * (y1 - y0)) / base
-    return anchors[-1][1] / base
-
-
-def repair_reserve(inp):
-    """Repair dollars per mile, weighted by cycle miles in each band (Inputs!C29)."""
-    buy, sell = inp['buy_odometer'], inp['sell_odometer']
-    rates = inp['repair_reserve_per_mile']
-    bands = [(max(0, min(sell, 100000) - buy), rates['under_100k']),
-             (max(0, min(sell, 150000) - max(buy, 100000)), rates['100k_to_150k']),
-             (max(0, sell - max(buy, 150000)), rates['over_150k'])]
-    miles = sell - buy
-    return sum(m * r for m, r in bands) / miles
-
-
-def resale_multiplier(v, inp):
-    """Resale strength relative to the industry-average 5-year depreciation."""
-    return (1 - v['deprec_5yr']) / (1 - inp['industry_avg_5yr_deprec'])
-
-
 def buy_price(v, inp):
     """Price at the buy odometer, and the basis it came from.
 
@@ -113,40 +81,6 @@ def price_problems(rows):
                 if v.get(orphan):
                     problems.append(f'{name}: {orphan} set without an msrp')
     return problems
-
-
-def cost_per_mile(v, inp):
-    """All-in dollars per mile over one ownership cycle. Mirrors Models!AB."""
-    miles = inp['sell_odometer'] - inp['buy_odometer']
-    years = miles / inp['annual_miles']
-    anchors = inp['retention_anchors']
-
-    price, _ = buy_price(v, inp)
-    resale_mult = resale_multiplier(v, inp)
-    ratio = (retention_index(inp['sell_odometer'], anchors)
-             / retention_index(inp['buy_odometer'], anchors))
-    resale = min(price, price * ratio * resale_mult)
-
-    fuel = (inp['diesel_per_gal'] if v['fuel'] == 'Diesel'
-            else inp['gas_per_gal']) / v['mpg']
-    tires = (inp['tire_set_truck'] if v['tire_class'] == 'Truck'
-             else inp['tire_set_crossover']) / inp['tire_life_miles']
-
-    if inp['financing_mode'] == 'cash':
-        capital = (price + resale) / 2 * inp['cash_opportunity_rate']
-    else:
-        financed = price * (1 - inp['down_payment_pct'])
-        capital = (financed * inp['avg_outstanding_balance_factor'] * inp['loan_apr']
-                   + price * inp['down_payment_pct'] * inp['cash_opportunity_rate'])
-
-    return ((price - resale) / miles                           # depreciation
-            + fuel + tires
-            + inp['scheduled_maint_per_mile']
-            + repair_reserve(inp)
-            + (inp['insurance_per_year'] + inp['registration_per_year'])
-            / inp['annual_miles']
-            + price * inp['sales_tax_rate'] / miles             # one-time, spread
-            + capital * years / miles)
 
 
 def num(x):

@@ -1,97 +1,27 @@
 #!/usr/bin/env python3
-"""Check the cost engine against figures the workbook published independently.
+"""Check build.py's data pipeline and, via Node, the JS cost engine against
+figures the workbook published independently.
 
 Run: python3 test_build.py
 
-These dollars-per-mile numbers come off the StrategyMatrix and Scoring tabs of
+The dollars-per-mile numbers come off the StrategyMatrix and Scoring tabs of
 vehicle-turnover-planner.xlsx, computed there by ~3,170 spreadsheet formulas.
-build.py recomputes them from the raw retention anchors. If the two ever
-disagree, one of them has drifted -- which is the whole reason this file exists.
+engine.js is the only cost engine now -- check_js_engine_parity() shells out
+to Node, which checks the workbook's published figures, the balanced-six
+winner, and the efficient frontier against VA.costPerMile (see
+test_engine.mjs). If the two ever disagree, one of them has drifted -- which
+is the whole reason this check exists.
 """
 import pathlib
 import re
 
 import build
 
-# name -> $/mile, as published on StrategyMatrix (col L) and Scoring (col D).
-PUBLISHED_CPM = {
-    'Honda HR-V': 0.426,
-    'Ford Escape Hybrid': 0.441,
-    'Toyota Venza': 0.457,
-    'Nissan Rogue': 0.459,
-    'Ford Maverick Hybrid': 0.460,
-    'Toyota Highlander Hybrid': 0.517,
-    'Honda Ridgeline': 0.519,
-    'Toyota Grand Highlander Hybrid': 0.580,
-    'Chevrolet Tahoe': 0.674,
-    'Chevrolet Tahoe 3.0L Duramax': 0.703,
-    'Toyota Sequoia (pre-2023 5.7 V8)': 0.717,
-}
-
-# StrategyMatrix "Balanced six": winner and score.
-BALANCED = {'cost': 25, 'quality': 15, 'longevity': 15,
-            'efficiency': 10, 'reliability': 20, 'comfort': 15}
-EXPECTED_WINNER, EXPECTED_SCORE = 'Toyota Highlander Hybrid', 89.9
-
-# The four the page reports undominated at those weights. Everything else is
-# beaten on both cost and value by something on this list.
-EXPECTED_FRONTIER = {'Toyota Highlander Hybrid', 'Toyota Venza',
-                     'Ford Escape Hybrid', 'Honda HR-V'}
-
 
 def main():
-    # Validate the ENGINE against the workbook, not the data. The workbook was
-    # built on the original placeholder prices, so rows since repriced from a
-    # verified MSRP will legitimately disagree. Stripping msrp here keeps this
-    # check meaningful: it fails on formula drift, not on intentional data edits.
-    rows = [dict(r, msrp='', observed_price='') for r in build.load()]
-    models = {m['name']: m for m in build.build_models(rows, build.INPUTS)}
-
-    # build_models() no longer bakes cpm/cost into the emitted dict -- that
-    # computation moved to the browser (VA.costPerMile). This suite still
-    # validates the Python formula directly against the workbook, so recompute
-    # cpm/cost here from build.cost_per_mile(), same as build_models() used
-    # to do internally, without changing what the page ships.
-    cpms = {v['name']: build.cost_per_mile(v, build.INPUTS) for v in rows}
-    lo, hi = min(cpms.values()), max(cpms.values())
-    for m in models.values():
-        m['cpm'] = cpms[m['name']]
-        m['cost'] = build.scale(m['cpm'], lo, hi, invert=True)
-
-    for name, expected in PUBLISHED_CPM.items():
-        assert name in models, f'{name} missing from data/vehicles.csv'
-        got = models[name]['cpm']
-        assert abs(got - expected) < 0.001, \
-            f'{name}: workbook says {expected}/mi, build.py computes {got}/mi'
-
-    ranked = sorted(
-        ((sum(w * models[n][k] for k, w in BALANCED.items()) / 100, n)
-         for n in models), reverse=True)
-    score, winner = ranked[0]
-    assert winner == EXPECTED_WINNER, \
-        f'balanced-six winner is {winner}, workbook says {EXPECTED_WINNER}'
-    assert abs(score - EXPECTED_SCORE) < 0.05, \
-        f'balanced-six score {score:.1f}, workbook says {EXPECTED_SCORE}'
-
-    # Reproduce the frontier the page draws: cost against the weighted value of
-    # the other five axes. Asserting the frontier is merely non-empty proves
-    # nothing -- the cheapest vehicle is undominated by construction.
-    value_axes = {k: w for k, w in BALANCED.items() if k != 'cost'}
-    total = sum(value_axes.values())
-    for m in models.values():
-        m['value'] = sum(w * m[k] for k, w in value_axes.items()) / total
-
-    frontier = {m['name'] for m in models.values()
-                if not any(o is not m and o['cost'] >= m['cost']
-                           and o['value'] >= m['value']
-                           and (o['cost'] > m['cost'] or o['value'] > m['value'])
-                           for o in models.values())}
-    assert frontier == EXPECTED_FRONTIER, \
-        f'frontier changed: {sorted(frontier)} != {sorted(EXPECTED_FRONTIER)}'
-
-    # Price provenance, checked against the real rows rather than the stripped
-    # ones. A price with no recorded year, source, or trim is indistinguishable
-    # from a verified one by the time it reaches the page.
+    # Price provenance, checked against the real rows. A price with no
+    # recorded year, source, or trim is indistinguishable from a verified
+    # one by the time it reaches the page.
     real = build.load()
     problems = build.price_problems(real)
     assert not problems, 'price provenance incomplete:\n  ' + '\n  '.join(problems)
@@ -103,10 +33,8 @@ def main():
     check_readme_counts(real)
 
     observed = sum(1 for r in real if r.get('observed_price'))
-    print(f'ok: {len(PUBLISHED_CPM)} published $/mile figures match, '
-          f'balanced-six = {winner} at {score:.1f}, '
-          f'{observed} observed / {len(real) - observed} placeholder '
-          f'({len(models)} vehicles)')
+    print(f'ok: {observed} observed / {len(real) - observed} placeholder '
+          f'({len(real)} vehicles)')
 
 
 def check_emitted_schema(rows):

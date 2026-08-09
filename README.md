@@ -12,15 +12,17 @@ Seventy-nine vehicles plotted on two axes: cost, against a **value** score that 
 | ---- | ---------- |
 | `data/vehicles.csv` | The dataset. One row per vehicle, observations and judgments only |
 | `data/inputs.json` | Every cost assumption — fuel, tires, repair reserve, the depreciation curve |
-| `build.py` | Computes cost per mile and the scoring axes, writes them into `index.html` |
-| `test_build.py` | Checks `build.py` against figures the spreadsheet published independently |
+| `engine.js` | The cost model. The only implementation; inlined into the page at build |
+| `build.py` | Emits the dataset and inlines the engine into `index.html` |
+| `test_build.py` | Checks the data pipeline, and shells out to Node to check `engine.js` |
+| `test_engine.mjs` | Checks `engine.js` against the frozen Python fixture and the workbook's published figures, run by `test_build.py` under Node |
 | `fetch_recalls.py` | Caches NHTSA recall-campaign counts into `data/recalls.json` |
-| `index.html` | The interactive frontier explorer. Generated, but self-contained once built |
+| `index.html` | The interactive frontier explorer. Generated, but self-contained once built — cost per mile is computed in the browser by `engine.js` |
 | `vehicle-turnover-planner.xlsx` | The original spreadsheet model. 11 tabs, ~3,170 live formulas |
 
-Open `index.html` in a browser to run it. The page itself has no dependencies.
+Open `index.html` in a browser to run it. The page itself has no dependencies — it does not need Node, only a browser.
 
-The scripts need **Python 3.8 or newer and nothing else** — standard library only, no pip install.
+The scripts need **Python 3.8 or newer** — standard library only, no pip install. Running `test_build.py` also needs **Node 20+** to check `engine.js`; Node is a development dependency only and is not required to use the page.
 
 ```bash
 python3 build.py        # regenerate index.html from data/
@@ -30,7 +32,7 @@ python3 build.py --check  # fail instead of rewriting; for CI or a pre-commit ho
 
 ## Modifying the data
 
-Both tasks below end the same way: run `build.py`, then `test_build.py`. `build.py` refuses to write if a price carries an incomplete provenance record, so read this section before editing, or the build will reject the row.
+Both tasks below end the same way: run `build.py`, then `test_build.py`. `build.py` refuses to write if a price carries an incomplete provenance record, so read this section before editing, or the build will reject the row. `python3 test_build.py` remains the single command that runs everything, including `engine.js`'s checks — it shells out to Node itself, so there is nothing else to run by hand.
 
 ### Adding a vehicle
 
