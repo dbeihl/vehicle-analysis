@@ -27,6 +27,30 @@ MARKER = 'const MODELS = '
 REQUIRED_ENGINE_FIELDS = ('price', 'mpg', 'fuel', 'deprec5yr', 'tireClass',
                           'observedPrice', 'observedAt')
 
+# Every monetary figure in this project is USD. These bounds are a data-entry
+# check, not a currency detector: a passenger vehicle outside this range is an
+# error of units or of decimal point. The case that motivated it was a search
+# returning $60,585 for a Honda CR-V Hybrid -- a Canadian dealer quoting CAD,
+# roughly 35% high, caught only because it looked wrong beside its siblings.
+PRICE_BOUNDS = (5000, 250000)
+
+# A global bound alone would NOT have caught the case that motivated this:
+# $60,585 sits comfortably inside it. Category ceilings do -- compact
+# crossovers in this dataset span $19,000-$30,000, so a CAD figure at double
+# the ceiling is unmistakable. The multiplier is deliberately loose: this is
+# a data-entry check, not a pricing model, and a real outlier should survive.
+CATEGORY_HEADROOM = 2.0
+
+
+def row_key(v):
+    """Stable identity for a row: nameplate plus trim.
+
+    Used as the key in data/engine-fixture.json and in the workbook
+    assertions. A bare nameplate stops being unique as soon as one vehicle
+    carries more than one trim.
+    """
+    return f"{v['name']}|{v.get('trim') or 'unspecified'}"
+
 
 def buy_price(v, inp):
     """Price at the buy odometer, and the basis it came from.
@@ -45,16 +69,97 @@ def buy_price(v, inp):
     return float(v['price']), 'placeholder'
 
 
+def category_ceiling(rows, category, exclude):
+    """Highest placeholder price among a category's rows from OTHER
+    nameplates, or None if none remain.
+
+    Used only as a sanity ceiling. Reads `price` rather than the resolved buy
+    price so the bound does not move as observed prices are added.
+
+    Excludes every row that shares `exclude`'s nameplate, not just `exclude`
+    itself. Excluding only the row under test was tried first and does not
+    work for sibling trims: sourcing all of a nameplate's trims from one bad
+    page gives that nameplate several inflated rows, and each becomes the
+    other's ceiling -- `amount > cap * CATEGORY_HEADROOM` can never fire for
+    any of them because their mutual peer is inflated by the same amount.
+    Excluding the whole nameplate closes that gap. It does NOT close the
+    parallel one: two DIFFERENT nameplates that are both wrong in the same
+    category at the same time still vouch for each other, since neither is
+    excluded from the other's peer set. That is a real, unclosed gap --
+    recorded here honestly rather than implying this check is stronger than
+    it is. Singletons still resolve to None here: a nameplate that is the
+    only member of its category (or whose siblings are its only
+    categorymates) has no peers regardless of how many trims it carries.
+
+    Peers whose `price` does not parse as a float are skipped rather than
+    raising. Those peers have not been validated yet -- price_problems calls
+    this once per row in an unspecified order -- so a malformed price on one
+    row must not raise while computing the ceiling for a *different* row.
+    The malformed row is reported on its own iteration by the per-row check
+    below.
+    """
+    peers = []
+    for r in rows:
+        if r.get('category') != category or r.get('name') == exclude.get('name'):
+            continue
+        raw = str(r.get('price', '')).strip()
+        if not raw:
+            continue
+        try:
+            peers.append(float(raw))
+        except ValueError:
+            continue
+    return max(peers) if peers else None
+
+
 def price_problems(rows):
-    """Data-integrity checks on price provenance. Empty list means clean.
+    """Data-integrity checks on price provenance and row identity. Empty
+    list means clean.
 
     Unknown provenance has to be an error rather than a silent default, or the
     check is decorative -- a placeholder that nobody flags reads exactly like a
-    verified figure once it reaches the page.
+    verified figure once it reaches the page. Row identity is held to the
+    same standard: build.py is what the README tells a data contributor to
+    run, so the (nameplate, trim) invariants must be enforced here, not only
+    asserted in a test that never runs against a contributor's edit.
+
+    Uniqueness and partial-trim-assignment are properties of the whole set,
+    not of any one row, so they are checked once up front rather than inside
+    the per-row loop below.
     """
     problems = []
+
+    # Row identity: (nameplate, trim) must be unique, or every map keyed by
+    # row_key -- the engine fixture, the recall cache, the workbook
+    # assertions -- collides the moment two rows share it.
+    seen = set()
+    for v in rows:
+        key = row_key(v)
+        if key in seen:
+            problems.append(f'duplicate row key {key!r}')
+        else:
+            seen.add(key)
+
+    # Partial trim assignment is the failure mode: one trim assigned and the
+    # rest left unspecified would silently compare a tier against a
+    # non-tier. A nameplate's trims must be either all real tiers or all
+    # unspecified.
+    by_plate = {}
+    for v in rows:
+        by_plate.setdefault(v['name'], []).append(v.get('trim'))
+    for plate, trims in by_plate.items():
+        real = [t for t in trims if t != 'unspecified']
+        if real and len(real) != len(trims):
+            problems.append(f'{plate}: partially assigned trims {trims}')
+
     for v in rows:
         name = v['name']
+        if v.get('trim') not in ('base', 'volume', 'loaded', 'unspecified'):
+            problems.append(f'{name}: trim must be base, volume, loaded, or '
+                            f'unspecified; got {v.get("trim")!r}')
+        if v.get('trim') in ('base', 'volume', 'loaded') and not v.get('trim_name'):
+            problems.append(f'{name}: trim {v["trim"]!r} without trim_name -- '
+                            f'a tier needs the badge a reader would recognise')
         if v.get('observed_price'):
             if not v.get('price_year'):
                 problems.append(f'{name}: observed_price without price_year')
@@ -87,6 +192,29 @@ def price_problems(rows):
             for orphan in ('msrp_year', 'msrp_trim', 'msrp_source'):
                 if v.get(orphan):
                     problems.append(f'{name}: {orphan} set without an msrp')
+
+        for field in ('price', 'observed_price', 'msrp', 'mix_price'):
+            raw = str(v.get(field, '')).strip()
+            if raw == '':
+                continue
+            try:
+                amount = float(raw)
+            except ValueError:
+                problems.append(f'{name}: {field} is not a number: {raw!r}')
+                continue
+            lo, hi = PRICE_BOUNDS
+            cap = category_ceiling(rows, v.get('category'), exclude=v)
+            if cap and amount > cap * CATEGORY_HEADROOM:
+                problems.append(
+                    f'{name}: {field} of ${amount:,.0f} is more than '
+                    f'{CATEGORY_HEADROOM:g}x the highest {v["category"]} price '
+                    f'(${cap:,.0f}). All figures are USD; check for a '
+                    f'foreign-currency error')
+            if not lo <= amount <= hi:
+                problems.append(
+                    f'{name}: {field} of ${amount:,.0f} is outside the plausible '
+                    f'USD range ${lo:,}-${hi:,}. All figures in this project are '
+                    f'USD; check for a foreign-currency or decimal-point error')
     return problems
 
 
@@ -128,6 +256,8 @@ def build_models(rows, inp):
         price, basis = buy_price(v, inp)
         out.append({
             'name': v['name'], 'cat': v['category'], 'tier': v['tier'],
+            'key': row_key(v),
+            'trimName': v.get('trim_name') or '',
             'price': int(round(price)), 'priceBasis': basis,
             'priceYear': v.get('price_year') or '', 'mpg': num(v['mpg']), 'fuel': v['fuel'],
             'gvwr': v['gvwr_note'],

@@ -17,6 +17,19 @@ import re
 
 import build
 
+# Underscore-prefixed keys in data/inputs.json that are documentation, not a
+# computational input engine.js reads. This is a closed allowlist on
+# purpose, not a leading-underscore heuristic: a prefix test would let any
+# *future* underscore-prefixed key opt itself out of check_js_engine_parity's
+# drift comparison just by being named that way -- including a computational
+# one someone wires into engine.js as `inp._something`. test_engine.mjs runs
+# engine.js against the frozen fixture, not live INPUTS, so that comparison
+# is the only check tying data/inputs.json to what test_engine.mjs actually
+# exercises; silently exempting a key there is silently disabling the check.
+# A new metadata key needs a conscious edit here, the same way an unknown
+# provenance field is an error rather than a silent skip in price_problems.
+METADATA_KEYS = {'_comment', '_currency'}
+
 
 def main():
     # Price provenance, checked against the real rows. A price with no
@@ -28,6 +41,8 @@ def main():
 
     check_price_resolution()
     check_emitted_schema(real)
+    check_row_keys(real)
+    check_freeze_fixture_key_format(real)
     check_page_up_to_date(real)
     check_js_engine_parity(real)
     check_recall_status_classification()
@@ -62,6 +77,86 @@ def check_emitted_schema(rows):
         baked_in = [f for f in ('cpm', 'peryr', 'cost') if f in m]
         assert not baked_in, \
             f'{m["name"]}: cost fields must be computed client-side, not emitted: {baked_in}'
+
+
+def check_row_keys(rows):
+    """price_problems() must enforce row identity, not just assert it holds.
+
+    Row identity is (nameplate, trim), and it must be unique -- every map
+    keyed by build.row_key -- the engine fixture, the recall cache, the
+    workbook assertions -- collides the moment one nameplate appears twice
+    with the same trim. main() already proves the real data satisfies these
+    invariants (it asserts `not build.price_problems(real)` before this
+    function runs), so this exercises the gate itself, against synthetic
+    rows built to violate each invariant one at a time, rather than
+    re-deriving the same logic test-side where a drift between the two could
+    hide a build.py that stopped enforcing what this file asserts.
+    """
+    base = dict(price='20000', category='Test cat')
+
+    dup = [dict(base, name='Dup', trim='base', trim_name='LX'),
+           dict(base, name='Dup', trim='base', trim_name='LX')]
+    assert build.price_problems(dup), \
+        'two rows sharing a (nameplate, trim) key must be rejected'
+
+    # Tiers are only meaningful once a nameplate has more than one row. Until
+    # then 'unspecified' is correct and must not be mistaken for a real tier.
+    unknown_trim = [dict(base, name='Unknown', trim='sport')]
+    assert build.price_problems(unknown_trim), \
+        'an unrecognised trim value must be rejected'
+
+    # Partial population is the failure mode: one trim assigned and the rest
+    # left unspecified would silently compare a tier against a non-tier.
+    partial = [dict(base, name='Partial', trim='base', trim_name='LX'),
+               dict(base, name='Partial', trim='unspecified')]
+    assert build.price_problems(partial), \
+        'a nameplate mixing a real tier with unspecified must be rejected'
+
+    # Fully-populated sibling trims on one nameplate must pass. Both rows
+    # share a nameplate and are the category's only members, so
+    # category_ceiling excludes them from each other's peer set and finds
+    # none -- this case is not exercising the price-plausibility ceiling,
+    # only row identity.
+    clean = [dict(base, name='Clean', trim='base', trim_name='LX'),
+             dict(base, name='Clean', trim='loaded', trim_name='EX-L')]
+    assert not build.price_problems(clean), \
+        'fully-populated sibling tiers on one nameplate must not be rejected'
+
+
+def check_freeze_fixture_key_format(rows):
+    """freeze_fixture.py's writer must key by build.row_key(v), not bare name.
+
+    test_engine.mjs reads `fixture[variant][v.key]`, and v.key is
+    build.row_key(v) (see build.build_models). A fixture keyed by bare
+    nameplate would silently disagree with that reader the moment a
+    nameplate carries more than one trim -- with today's one-trim-per-name
+    data it would instead make every entry compare as never-found, since
+    'Name' and 'Name|unspecified' are different strings. Pins the format so
+    the writer and the reader cannot drift apart again without this failing.
+
+    Calls freeze_fixture.build_fixture() -- the exact code path
+    `python3 freeze_fixture.py` uses to compute the fixture -- but never
+    writes to data/engine-fixture.json, so it cannot clobber the frozen
+    Python engine's output, the one piece of ground truth this codebase did
+    not produce.
+    """
+    import shutil
+    import freeze_fixture
+
+    node = shutil.which('node')
+    assert node, ('node is required to test freeze_fixture.py and was not '
+                  'found. It is a development dependency only; the page '
+                  'ships without it.')
+
+    fixture = freeze_fixture.build_fixture(rows, node)
+    expected = {build.row_key(v) for v in rows}
+    for variant in ('full', 'workbook_oracle'):
+        got = set(fixture[variant])
+        assert got == expected, (
+            f'freeze_fixture.py wrote {variant!r} keys that do not match '
+            f'build.row_key(v) -- unexpected: {sorted(got - expected)[:3]}, '
+            f'missing: {sorted(expected - got)[:3]}. The writer may have '
+            f'reverted to keying by bare nameplate.')
 
 
 def check_page_up_to_date(rows):
@@ -115,7 +210,22 @@ def check_js_engine_parity(rows):
     # is inputs-independent -- nothing else compares them. A drifted input
     # set makes every downstream "ok" claim false about the actual page.
     fixture = json.loads((root / 'data' / 'engine-fixture.json').read_text())
-    assert fixture['_inputs'] == build.INPUTS, (
+    # An underscore-prefixed key that is not in METADATA_KEYS must fail here
+    # rather than silently fall out of the comparison below on either side --
+    # otherwise a future computational input named with a leading underscore
+    # would escape this check by naming convention alone, and test_engine.mjs
+    # would keep reporting "ok" while checking engine.js against a frozen
+    # fixture that never saw it.
+    unknown = ({k for k in build.INPUTS if k.startswith('_')}
+              | {k for k in fixture['_inputs'] if k.startswith('_')}) - METADATA_KEYS
+    assert not unknown, (
+        f'unrecognised underscore-prefixed key(s) {sorted(unknown)} in '
+        'data/inputs.json or its frozen fixture -- add to test_build.py\'s '
+        'METADATA_KEYS if this is documentation, not a computational input')
+    # Compare only the computational inputs, not the allowlisted metadata.
+    live = {k: v for k, v in build.INPUTS.items() if k not in METADATA_KEYS}
+    frozen = {k: v for k, v in fixture['_inputs'].items() if k not in METADATA_KEYS}
+    assert frozen == live, (
         'data/inputs.json has drifted from the inputs the oracle was frozen '
         'at -- regenerate data/engine-fixture.json with `python3 '
         'freeze_fixture.py`')
@@ -163,25 +273,125 @@ def check_price_resolution():
     amount, basis = build.buy_price(dict(base), inp)
     assert (amount, basis) == (30000.0, 'placeholder')
 
-    # Every provenance combination the gate is supposed to reject.
+    # Every provenance combination the gate is supposed to reject. Each row
+    # carries trim='unspecified' so its rejection is pinned to the specific
+    # violation under test, not incidentally caused by the trim check too --
+    # otherwise these would be assertions that could never fail.
     rejected = [
-        dict(name='a', observed_price='1', price_source='x'),           # no year
-        dict(name='b', observed_price='1', price_year='2023'),          # no source
-        dict(name='c', price_year='2023'),                              # orphaned year
-        dict(name='d', price_source='x'),                               # orphaned source
-        dict(name='e', msrp='1', msrp_year='2026', msrp_source='x'),    # no trim
-        dict(name='f', msrp='1', msrp_trim='XLE', msrp_source='x'),     # no year
-        dict(name='g', msrp_year='2026'),                               # orphaned msrp_year
-        dict(name='h', msrp_trim='XLE'),                                # orphaned msrp_trim
-        dict(name='i', msrp_source='KBB'),                              # orphaned msrp_source
-        dict(name='j', observed_price='1', price_year='2023',
+        dict(name='a', trim='unspecified', observed_price='1', price_source='x'),  # no year
+        dict(name='b', trim='unspecified', observed_price='1', price_year='2023'),  # no source
+        dict(name='c', trim='unspecified', price_year='2023'),                  # orphaned year
+        dict(name='d', trim='unspecified', price_source='x'),                   # orphaned source
+        dict(name='e', trim='unspecified', msrp='1', msrp_year='2026',
+             msrp_source='x'),                                          # no trim
+        dict(name='f', trim='unspecified', msrp='1', msrp_trim='XLE',
+             msrp_source='x'),                                          # no year
+        dict(name='g', trim='unspecified', msrp_year='2026'),           # orphaned msrp_year
+        dict(name='h', trim='unspecified', msrp_trim='XLE'),            # orphaned msrp_trim
+        dict(name='i', trim='unspecified', msrp_source='KBB'),          # orphaned msrp_source
+        dict(name='j', trim='unspecified', observed_price='1', price_year='2023',
              price_source='x'),                                 # no anchor
+        # Plausibility. The CAD figure that prompted this was $60,585 for a
+        # CR-V Hybrid whose real US price is nearer $35-40k, so the bound has
+        # to be wide enough for a real Escalade and tight enough to catch a
+        # currency error on a mainstream crossover.
+        dict(name='k', trim='unspecified', observed_price='400000', price_year='2023',
+             price_source='x', observed_price_odometer='40000'),   # too high
+        dict(name='l', trim='unspecified', observed_price='250', price_year='2023',
+             price_source='x', observed_price_odometer='40000'),   # too low
+        dict(name='m', trim='unspecified', price='0'),                    # zero placeholder
     ]
     for row in rejected:
         assert build.price_problems([row]), f'gate accepted a bad row: {row}'
+    # observed_price='1' was a placeholder-era convention meaning "amount
+    # irrelevant, only provenance completeness matters." The plausibility
+    # gate above retires that convention -- $1 is now itself implausible --
+    # so this "everything is fine" row needs an amount inside PRICE_BOUNDS.
     assert not build.price_problems(
-        [dict(name='ok', observed_price='1', price_year='2023', price_source='x',
-              observed_price_odometer='40000')])
+        [dict(name='ok', trim='unspecified', observed_price='31500', price_year='2023',
+              price_source='x', observed_price_odometer='40000')])
+
+    # category_ceiling must exclude the row under test from its own peer set.
+    # Folding it in was the first version and does not work: an inflated
+    # price becomes a candidate for the very max it is compared against, so
+    # it becomes its own category's ceiling and can never exceed
+    # CATEGORY_HEADROOM times itself. That silently passed the $60,585 CR-V
+    # simulation in verification until this exclusion was added -- these two
+    # cases pin the fix so it cannot regress.
+    at_cap = [dict(name='p', trim='unspecified', category='Test cat', price='20000'),
+              dict(name='q', trim='unspecified', category='Test cat', price='40000')]
+    assert not build.price_problems(at_cap), \
+        'exactly 2x a peer (not counting self) must not fire -- the bound is strict'
+    over_cap = [dict(name='p', trim='unspecified', category='Test cat', price='20000'),
+                dict(name='q', trim='unspecified', category='Test cat', price='40001')]
+    assert build.price_problems(over_cap), \
+        'a row priced over 2x its OTHER peers must be rejected even though ' \
+        'it is also, trivially, the max of its own category'
+
+    # category_ceiling must also exclude a row's SIBLINGS -- every other row
+    # sharing its nameplate -- not just the row itself. Three trims of one
+    # nameplate, all inflated to the same implausible price, plus a genuine
+    # same-category peer at a normal price as the anchor. Without the
+    # same-nameplate exclusion, the three siblings would be one another's
+    # peers and each other's ceiling: an inflated price becomes a candidate
+    # for the very max it is compared against, so none of them could ever
+    # exceed CATEGORY_HEADROOM times a sibling inflated by the same amount.
+    # That is exactly the failure mode this check exists to catch --
+    # sourcing all of a nameplate's trims from one bad page. The anchor is
+    # what makes rejection possible at all: it sets a real ceiling the
+    # siblings cannot reach together once they can no longer vouch for each
+    # other.
+    sibling_price = '60585'  # the CAD CR-V Hybrid figure that motivated this gate
+    siblings_inflated = [
+        dict(name='Sib', trim='base', trim_name='LX', category='Test cat',
+             price=sibling_price),
+        dict(name='Sib', trim='volume', trim_name='EX', category='Test cat',
+             price=sibling_price),
+        dict(name='Sib', trim='loaded', trim_name='EX-L', category='Test cat',
+             price=sibling_price),
+        dict(name='Anchor', trim='unspecified', category='Test cat', price='25000'),
+    ]
+    sibling_problems = build.price_problems(siblings_inflated)
+    assert sum(1 for p in sibling_problems if p.startswith('Sib:')) == 3, \
+        ('all three inflated sibling trims must be rejected once a genuine '
+         f'peer sets a real ceiling; got: {sibling_problems}')
+    assert not any(p.startswith('Anchor:') for p in sibling_problems), \
+        f'the genuine peer itself must not be flagged; got: {sibling_problems}'
+
+    # Two DIFFERENT nameplates, both inflated in the same category at the
+    # same time, are a gap this check does NOT close -- documented as an
+    # expected pass, not a silent omission. Each nameplate is excluded only
+    # from its OWN peer set, so two distinct nameplates remain each other's
+    # peers and can still mask one another, same as the pre-fix behavior for
+    # this specific case. See category_ceiling's docstring.
+    two_plates_inflated = [
+        dict(name='CR-V Hybrid', trim='unspecified', category='Test cat', price='60585'),
+        dict(name='RAV4 Hybrid', trim='unspecified', category='Test cat', price='61000'),
+    ]
+    assert not build.price_problems(two_plates_inflated), \
+        ('two different nameplates both inflated in the same category are a '
+         'known, undocumented-as-closed gap -- this must still pass, and a '
+         'failure here means the gap silently closed or someone narrowed '
+         "the exclusion in a way that changes this contract without "
+         "updating category_ceiling's docstring")
+
+    # A malformed price on one row must not raise while category_ceiling
+    # computes a DIFFERENT row's ceiling. Peers are parsed before their own
+    # per-row validation has necessarily run (price_problems iterates rows in
+    # order), so a bad peer has to be skipped rather than crash the row
+    # actually under test.
+    malformed_peer = [
+        dict(name='Malformed', trim='unspecified', category='Test cat', price='abc'),
+        dict(name='Valid', trim='unspecified', category='Test cat', price='22000'),
+    ]
+    malformed_problems = build.price_problems(malformed_peer)
+    assert any(p.startswith('Malformed:') and 'not a number' in p
+              for p in malformed_problems), \
+        f'a malformed price must be reported on its own row; got: {malformed_problems}'
+    assert not any(p.startswith('Valid:') for p in malformed_problems), \
+        ("a malformed peer's price must not raise while validating a "
+         f'different row, nor produce a problem attributed to that other '
+         f'row; got: {malformed_problems}')
 
 
 def check_recall_status_classification():
