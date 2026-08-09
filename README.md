@@ -84,9 +84,11 @@ Do not edit `price`. Add `observed_price` alongside it:
 
 ## Adjusting the assumptions
 
-The eyebrow summary under the masthead is a button. Click it to open a panel where you can change eleven cost assumptions. The summary reads like `55,000 mi/yr · buy at 40k · sell at 180k · gas $3.55 — change`. When you edit any field, it appends ` · edited` in teal so you can see at a glance that something differs from the defaults.
+The eyebrow summary under the masthead is a button. Click it to open a panel where you can change eleven cost assumptions. The summary reads like `55,000 mi/yr · buy at 40k · sell at 180k · gas $3.55`, followed by a `change` prompt. When you edit any field, it appends ` · edited` in teal so you can see at a glance that something differs from the defaults.
 
-The eleven fields are split into two groups. The first group can change which vehicle ranks highest: annual mileage, the buy and sell odometers, and fuel prices. The second group, labeled "Budget only", shifts every cost per mile by the same amount without reordering the vehicles. Those figures — tire costs, tire life, maintenance rates, insurance, and registration — are identical for every vehicle, so adjusting them moves the cost axis but not the frontier's shape.
+The eleven fields are split into two groups, and the split is not cosmetic. The first eight can change which vehicle ranks highest, because each one multiplies against something that varies per vehicle: annual mileage and the two odometers interact with each vehicle's depreciation curve, fuel prices divide by its MPG, and the two tire prices and tire life depend on whether it wears truck or crossover tires.
+
+The remaining three, labelled "Budget only", are maintenance per mile, insurance, and registration. Those are identical for every vehicle, so they shift all 79 costs per mile by the same constant. They change what the vehicle costs you; they cannot change which one wins.
 
 The panel validates as you type. Numbers must fall within published ranges. The buy odometer cannot equal or exceed the sell odometer in either direction; if you try, the field rejects the input and marks itself invalid.
 
