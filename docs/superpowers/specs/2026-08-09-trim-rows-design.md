@@ -50,6 +50,9 @@ Three new columns in `data/vehicles.csv`:
 | `trim` | One of `base`, `volume`, `loaded`. The tier, used for comparison and filtering |
 | `trim_name` | The real badge: XLE, Limited, Reserve, Platinum |
 | `mix_price` | On the four rows that have one: the listing-average price. **Recorded, never used as a price** |
+| `wheel_in` | Wheel diameter in inches for that trim. Published and objective |
+| `avg_mpg` | Real-world observed MPG from EPA's user-submitted data |
+| `avg_mpg_n` | How many submissions back `avg_mpg`. **Required whenever `avg_mpg` is present** |
 
 `trim` is the machine-comparable tier; `trim_name` is what a reader recognises. Both are required.
 
@@ -63,13 +66,27 @@ The reason is comparability. A consistent tier lets a reader hold trim constant 
 
 ### 4. What varies by trim
 
-**Varies:** price, comfort, GVWR.
+**Varies:** price, comfort, GVWR, wheel diameter.
 
 **Copies down from the nameplate:** category, tier, `deprec_5yr`, quality, longevity, reliability, transmission, engine, risk, 250k odds, efficiency.
 
 Those are properties of the vehicle rather than of its equipment level. A Platinum Highlander has the same drivetrain architecture and the same odds of reaching 250,000 miles as an XLE.
 
 **GVWR is the one with money attached.** Some nameplates cross 6,000 lb between trims, which flips Section 179 eligibility. For a self-employed buyer that is a tax consequence riding on a wheel-and-tire package, and it is invisible in a nameplate-level dataset. The existing `heavy` boolean and `gvwr_note` become per-trim.
+
+### 4a. Wheel size and real-world MPG
+
+Wheel diameter is recorded per trim. It is published, objective, and it is the physical driver behind two things: the ride component of comfort, where the effect is large and well understood, and the fuel-economy difference between an XLE on 18s and a Platinum on 22s.
+
+Real-world MPG is recorded from EPA's user-submitted data alongside the EPA rating, in `avg_mpg`, **with its sample size in `avg_mpg_n`**.
+
+The sample size is not optional, because the data is thin. Sampling eight nameplates: three resolved and all three had fewer than ten submissions. The Highlander Hybrid's average rests on a single submission, and the CR-V's single submission reads 27.8 against an EPA 32 — a 4.2 mpg gap that is one person's driving, not a measurement.
+
+So `avg_mpg` is displayed and used only above a documented threshold, and below it the row falls back to the EPA figure and says so. This is the same discipline already applied to `comparable` on recall counts and `years_answered` on the recall cache: record the number, record what stands behind it, and let the threshold decide whether it speaks.
+
+Fuelly was evaluated and rejected as a source: it returns HTTP 403 to automated requests, so there is no legitimate programmatic path to it.
+
+**Efficiency itself remains a powertrain property.** EPA publishes one rating per drivetrain configuration, verified across six nameplates — the RAV4 Hybrid, Highlander, and CR-V each return a single record covering their entire trim ladder, and every multi-record case (Explorer, Tahoe, Grand Cherokee) splits on engine rather than trim. Trim genuinely affects real-world economy through mass and rolling resistance; nothing free measures it at that resolution, and the model does not guess.
 
 ### 5. Prices are sourced per tier
 
@@ -102,7 +119,7 @@ This is not hypothetical. While sourcing the 90k tier, a search returned "2026 H
 ## Out of scope
 
 - Every published badge rather than three tiers
-- Per-trim efficiency, which EPA does not publish
+- A modelled per-trim MPG derate. The effect is real but unmeasured at that resolution, and inventing a coefficient would undo the work of retiring the MSRP derivation
 - Per-trim recall data, which NHTSA does not issue
 - Model-year x odometer expansion (#10), which is a separate dimension
 
@@ -124,6 +141,8 @@ Steps 1 through 3 change no vehicle data and can be verified against the existin
 - Tier ordering: within a nameplate, `base <= volume <= loaded` on price
 - Mix-price bracket: where `mix_price` exists, `base < mix_price < loaded`
 - Plausibility: every price within a documented USD range, per #24
+- `avg_mpg` never appears without `avg_mpg_n`, and is never consumed below the threshold
+- Wheel diameter present on every row, since it feeds the comfort ride sub-score
 - Recall join: every trim row resolves to its nameplate's recall entry, and a nameplate absent from `recalls.json` degrades without failing
 - The 158-comparison engine parity gate continues to pass after regeneration, against the new keys
 
