@@ -13,7 +13,19 @@ const inputs = fixture._inputs;
 const dumped = JSON.parse(readFileSync('./build-models.json', 'utf8'));
 
 const TOL = 1e-12;
-let checked = 0, worst = 0, worstName = '';
+let checked = 0, worst = -Infinity, worstName = '';
+
+// Structural checks on the dump for one variant, run once before its
+// per-vehicle parity loop below. An empty `models` array would otherwise let
+// the loop underneath do nothing and still report "ok" -- the same "assertion
+// that could never fail" shape this suite exists to catch elsewhere. Later
+// tasks append further per-variant assertions here rather than inline in the
+// loop, so they stay in one place as the fixture grows.
+function assertVariantShape(variant, models) {
+  if (models.length === 0) {
+    throw new Error(`${variant}: build-models.json has no models -- refusing to report a vacuous pass`);
+  }
+}
 
 for (const variant of ['full', 'workbook_oracle']) {
   // Both variants come pre-built from test_build.py: 'full' from the real
@@ -22,7 +34,10 @@ for (const variant of ['full', 'workbook_oracle']) {
   // model's 'price' field is therefore already correct for its variant --
   // build_models resolves buy_price into 'price', so stripping observedPrice
   // after the fact on a 'full' model cannot recover the raw placeholder.
-  for (const v of dumped[variant]) {
+  const models = dumped[variant];
+  assertVariantShape(variant, models);
+
+  for (const v of models) {
     const expected = fixture[variant][v.name];
     if (!expected) throw new Error(`fixture has no ${variant} entry for ${v.name}`);
     const got = VA.costPerMile(v, inputs);

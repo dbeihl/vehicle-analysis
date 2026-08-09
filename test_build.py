@@ -136,7 +136,6 @@ def check_js_engine_parity(rows):
     import json
     import shutil
     import subprocess
-    import tempfile
 
     node = shutil.which('node')
     assert node, ('node is required to test the cost engine and was not found. '
@@ -148,6 +147,15 @@ def check_js_engine_parity(rows):
         'full': build.build_models(rows, build.INPUTS),
         'workbook_oracle': build.build_models(stripped, build.INPUTS),
     }
+    # build_models() is 1:1 per row, so a short dump means something upstream
+    # silently dropped vehicles. Without this, an empty dump still exits 0 --
+    # node has nothing to iterate and prints "ok: 0 comparisons" -- which is
+    # exactly the "assertion that could never fail" shape this file exists to
+    # avoid elsewhere.
+    assert len(dumped['full']) == len(rows), \
+        f"full: dumped {len(dumped['full'])} models, expected {len(rows)}"
+    assert len(dumped['workbook_oracle']) == len(rows), \
+        f"workbook_oracle: dumped {len(dumped['workbook_oracle'])} models, expected {len(rows)}"
     dump = root / 'build-models.json'
     dump.write_text(json.dumps(dumped))
     try:
