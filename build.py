@@ -70,36 +70,88 @@ def buy_price(v, inp):
 
 
 def category_ceiling(rows, category, exclude):
-    """Highest placeholder price among a category's OTHER rows, or None if
-    none remain once the row under test is excluded.
+    """Highest placeholder price among a category's rows from OTHER
+    nameplates, or None if none remain.
 
     Used only as a sanity ceiling. Reads `price` rather than the resolved buy
     price so the bound does not move as observed prices are added.
 
-    `exclude` (the row under test, by identity) must be left out of its own
-    peer set. Folding it in was tried first and does not work: whatever price
-    is being checked on that row becomes a candidate for the very max it is
-    being compared against, so an inflated `price` simply becomes the new
-    ceiling of its own category and `amount > cap * CATEGORY_HEADROOM` can
-    never be true for it. That is precisely the failure mode this check
-    exists to catch -- a self-inclusive ceiling cannot catch a self-inflated
-    price. Singletons still resolve to None here, same as before: excluding
-    the one row in a one-row category leaves zero peers.
+    Excludes every row that shares `exclude`'s nameplate, not just `exclude`
+    itself. Excluding only the row under test was tried first and does not
+    work for sibling trims: sourcing all of a nameplate's trims from one bad
+    page gives that nameplate several inflated rows, and each becomes the
+    other's ceiling -- `amount > cap * CATEGORY_HEADROOM` can never fire for
+    any of them because their mutual peer is inflated by the same amount.
+    Excluding the whole nameplate closes that gap. It does NOT close the
+    parallel one: two DIFFERENT nameplates that are both wrong in the same
+    category at the same time still vouch for each other, since neither is
+    excluded from the other's peer set. That is a real, unclosed gap --
+    recorded here honestly rather than implying this check is stronger than
+    it is. Singletons still resolve to None here: a nameplate that is the
+    only member of its category (or whose siblings are its only
+    categorymates) has no peers regardless of how many trims it carries.
+
+    Peers whose `price` does not parse as a float are skipped rather than
+    raising. Those peers have not been validated yet -- price_problems calls
+    this once per row in an unspecified order -- so a malformed price on one
+    row must not raise while computing the ceiling for a *different* row.
+    The malformed row is reported on its own iteration by the per-row check
+    below.
     """
-    peers = [float(r['price']) for r in rows
-             if r.get('category') == category and r is not exclude
-             and str(r.get('price', '')).strip()]
+    peers = []
+    for r in rows:
+        if r.get('category') != category or r.get('name') == exclude.get('name'):
+            continue
+        raw = str(r.get('price', '')).strip()
+        if not raw:
+            continue
+        try:
+            peers.append(float(raw))
+        except ValueError:
+            continue
     return max(peers) if peers else None
 
 
 def price_problems(rows):
-    """Data-integrity checks on price provenance. Empty list means clean.
+    """Data-integrity checks on price provenance and row identity. Empty
+    list means clean.
 
     Unknown provenance has to be an error rather than a silent default, or the
     check is decorative -- a placeholder that nobody flags reads exactly like a
-    verified figure once it reaches the page.
+    verified figure once it reaches the page. Row identity is held to the
+    same standard: build.py is what the README tells a data contributor to
+    run, so the (nameplate, trim) invariants must be enforced here, not only
+    asserted in a test that never runs against a contributor's edit.
+
+    Uniqueness and partial-trim-assignment are properties of the whole set,
+    not of any one row, so they are checked once up front rather than inside
+    the per-row loop below.
     """
     problems = []
+
+    # Row identity: (nameplate, trim) must be unique, or every map keyed by
+    # row_key -- the engine fixture, the recall cache, the workbook
+    # assertions -- collides the moment two rows share it.
+    seen = set()
+    for v in rows:
+        key = row_key(v)
+        if key in seen:
+            problems.append(f'duplicate row key {key!r}')
+        else:
+            seen.add(key)
+
+    # Partial trim assignment is the failure mode: one trim assigned and the
+    # rest left unspecified would silently compare a tier against a
+    # non-tier. A nameplate's trims must be either all real tiers or all
+    # unspecified.
+    by_plate = {}
+    for v in rows:
+        by_plate.setdefault(v['name'], []).append(v.get('trim'))
+    for plate, trims in by_plate.items():
+        real = [t for t in trims if t != 'unspecified']
+        if real and len(real) != len(trims):
+            problems.append(f'{plate}: partially assigned trims {trims}')
+
     for v in rows:
         name = v['name']
         if v.get('trim') not in ('base', 'volume', 'loaded', 'unspecified'):

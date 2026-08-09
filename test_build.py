@@ -80,33 +80,47 @@ def check_emitted_schema(rows):
 
 
 def check_row_keys(rows):
-    """Row identity is (nameplate, trim), and it must be unique.
+    """price_problems() must enforce row identity, not just assert it holds.
 
-    Every map keyed by bare name -- the engine fixture, the recall cache, the
-    workbook assertions -- collides the moment one nameplate appears twice.
+    Row identity is (nameplate, trim), and it must be unique -- every map
+    keyed by build.row_key -- the engine fixture, the recall cache, the
+    workbook assertions -- collides the moment one nameplate appears twice
+    with the same trim. main() already proves the real data satisfies these
+    invariants (it asserts `not build.price_problems(real)` before this
+    function runs), so this exercises the gate itself, against synthetic
+    rows built to violate each invariant one at a time, rather than
+    re-deriving the same logic test-side where a drift between the two could
+    hide a build.py that stopped enforcing what this file asserts.
     """
-    seen = {}
-    for v in rows:
-        key = build.row_key(v)
-        assert key not in seen, f'duplicate row key {key!r}'
-        seen[key] = v
-    assert len(seen) == len(rows)
+    base = dict(price='20000', category='Test cat')
+
+    dup = [dict(base, name='Dup', trim='base', trim_name='LX'),
+           dict(base, name='Dup', trim='base', trim_name='LX')]
+    assert build.price_problems(dup), \
+        'two rows sharing a (nameplate, trim) key must be rejected'
 
     # Tiers are only meaningful once a nameplate has more than one row. Until
     # then 'unspecified' is correct and must not be mistaken for a real tier.
-    valid = {'base', 'volume', 'loaded', 'unspecified'}
-    for v in rows:
-        assert v['trim'] in valid, f'{v["name"]}: unknown trim {v["trim"]!r}'
+    unknown_trim = [dict(base, name='Unknown', trim='sport')]
+    assert build.price_problems(unknown_trim), \
+        'an unrecognised trim value must be rejected'
 
     # Partial population is the failure mode: one trim assigned and the rest
     # left unspecified would silently compare a tier against a non-tier.
-    by_plate = {}
-    for v in rows:
-        by_plate.setdefault(v['name'], []).append(v['trim'])
-    for plate, trims in by_plate.items():
-        real = [t for t in trims if t != 'unspecified']
-        assert not real or len(real) == len(trims), \
-            f'{plate}: partially assigned trims {trims}'
+    partial = [dict(base, name='Partial', trim='base', trim_name='LX'),
+               dict(base, name='Partial', trim='unspecified')]
+    assert build.price_problems(partial), \
+        'a nameplate mixing a real tier with unspecified must be rejected'
+
+    # Fully-populated sibling trims on one nameplate must pass. Both rows
+    # share a nameplate and are the category's only members, so
+    # category_ceiling excludes them from each other's peer set and finds
+    # none -- this case is not exercising the price-plausibility ceiling,
+    # only row identity.
+    clean = [dict(base, name='Clean', trim='base', trim_name='LX'),
+             dict(base, name='Clean', trim='loaded', trim_name='EX-L')]
+    assert not build.price_problems(clean), \
+        'fully-populated sibling tiers on one nameplate must not be rejected'
 
 
 def check_freeze_fixture_key_format(rows):
