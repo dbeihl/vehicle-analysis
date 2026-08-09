@@ -134,7 +134,9 @@ def build_models(rows, inp):
             'deprec5yr': float(v['deprec_5yr']),
             'tireClass': 'Truck' if v['tire_class'] == 'Truck' else 'Crossover',
             'observedPrice': float(v['observed_price']) if v.get('observed_price') else None,
-            'observedAt': float(v['observed_price_odometer']) if v.get('observed_price_odometer') else None,
+            'observedAt': (float(v['observed_price_odometer'])
+                           if str(v.get('observed_price_odometer', '')).strip() != ''
+                           else None),
             'quality': num(v['quality']), 'longevity': num(v['longevity']),
             'efficiency': scale(v['mpg'], mlo, mhi),
             'reliability': num(v['reliability']), 'comfort': num(v['comfort']),
