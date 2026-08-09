@@ -15,7 +15,6 @@ import argparse
 import csv
 import json
 import pathlib
-import re
 import sys
 
 ROOT = pathlib.Path(__file__).parent
@@ -87,6 +86,13 @@ def price_problems(rows):
                 problems.append(f'{name}: observed_price without price_year')
             if not v.get('price_source'):
                 problems.append(f'{name}: observed_price without price_source')
+        else:
+            # A placeholder carrying a year or a source claims provenance it does
+            # not have. It would render identically to a verified row.
+            for orphan in ('price_year', 'price_source'):
+                if v.get(orphan):
+                    problems.append(f'{name}: {orphan} set on a placeholder price; '
+                                    f'only observed_price may claim one')
         if v.get('msrp'):
             if not v.get('msrp_year'):
                 problems.append(f'{name}: msrp without msrp_year')

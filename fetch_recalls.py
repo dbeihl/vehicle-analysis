@@ -14,6 +14,8 @@ import json
 import pathlib
 import re
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -34,49 +36,101 @@ def split_name(name):
     return None, base
 
 
-def fetch(make, model, year):
+def fetch(make, model, year, attempts=3):
+    """Return (results, status).
+
+    status is 'ok', 'not_offered' when NHTSA rejects the combination -- which
+    is usually genuine, the Grand Highlander did not exist in 2019 -- or
+    'failed' when the request never succeeded. The three are not
+    interchangeable: averaging over a year that failed silently understates a
+    nameplate, while averaging over a year the vehicle was never sold is fine.
+    """
     q = urllib.parse.urlencode(dict(make=make, model=model, modelYear=year))
     url = f'https://api.nhtsa.gov/recalls/recallsByVehicle?{q}'
-    try:
-        with urllib.request.urlopen(url, timeout=30) as fh:
-            return json.load(fh).get('results') or []
-    except Exception as exc:                      # transient API failure
-        print(f'  ! {make} {model} {year}: {exc}', file=sys.stderr)
-        return None
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as fh:
+                return json.load(fh).get('results') or [], 'ok'
+        except urllib.error.HTTPError as exc:
+            if exc.code == 400:
+                return [], 'not_offered'
+            if exc.code < 500:
+                return None, 'failed'
+        except Exception:
+            pass
+        if attempt + 1 < attempts:
+            time.sleep(2 ** attempt)
+    print(f'  ! {make} {model} {year}: gave up after {attempts} attempts',
+          file=sys.stderr)
+    return None, 'failed'
 
 
 def main():
     names = [r['name'] for r in csv.DictReader(open(ROOT / 'data' / 'vehicles.csv'))]
-    out = {}
+    cache_path = ROOT / 'data' / 'recalls.json'
+    previous = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+
+    out, kept, dropped = {}, [], []
     for name in names:
         make, model = split_name(name)
         if not make:
             print(f'  ? unparsed make: {name}', file=sys.stderr)
             continue
-        counts, powertrain, ok = {}, set(), 0
+
+        counts, powertrain, offered, failed = {}, set(), 0, []
         for y in YEARS:
-            rs = fetch(make, model, y)
-            if rs is None:
+            rs, status = fetch(make, model, y)
+            if status == 'failed':
+                failed.append(y)
                 continue
-            ok += 1
             counts[y] = len(rs)
+            if status == 'ok':
+                offered += 1
             for r in rs:
                 comp = (r.get('Component') or '').upper()
                 if 'TRANSMISSION' in comp or 'POWER TRAIN' in comp:
                     powertrain.add(y)
-        if not ok:
+
+        # A partial refresh must never overwrite a complete one. An average over
+        # two years is not comparable to an average over three, and silently
+        # publishing the short one understates that nameplate against its peers.
+        if failed:
+            if name in previous:
+                out[name] = previous[name]
+                kept.append(name)
+            else:
+                dropped.append(name)
+            print(f'  ! {name}: years {failed} failed; '
+                  f'{"kept previous value" if name in previous else "no data"}',
+                  file=sys.stderr)
             continue
+
+        if not offered:                      # never sold in any sampled year
+            dropped.append(name)
+            continue
+
         out[name] = {
             'make': make, 'model': model, 'by_year': counts,
-            'per_year': round(sum(counts.values()) / ok, 2),
+            'per_year': round(sum(counts.values()) / offered, 2),
             'powertrain_years': sorted(powertrain),
-            'years_sampled': ok,
+            'years_offered': offered,
+            'years_requested': len(YEARS),
         }
         print(f'{name:<40} {out[name]["per_year"]:>6} campaigns/yr'
+              f'  ({offered}/{len(YEARS)} yr)'
               f'{"  POWERTRAIN" if powertrain else ""}')
 
-    (ROOT / 'data' / 'recalls.json').write_text(json.dumps(out, indent=2) + '\n')
+    # Atomic replace, so an interrupted run cannot leave a truncated cache.
+    tmp = cache_path.with_suffix('.json.tmp')
+    tmp.write_text(json.dumps(out, indent=2, sort_keys=True) + '\n')
+    tmp.replace(cache_path)
+
     print(f'\nwrote data/recalls.json for {len(out)}/{len(names)} nameplates')
+    if kept:
+        print(f'  {len(kept)} kept a previous value after a failed refresh')
+    if dropped:
+        print(f'  {len(dropped)} have no usable data: {", ".join(dropped[:5])}'
+              f'{" ..." if len(dropped) > 5 else ""}')
 
 
 if __name__ == '__main__':
