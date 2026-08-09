@@ -58,7 +58,7 @@ Do not edit `price`. Add `observed_price` alongside it:
 
 ## Where prices come from
 
-`build.py` uses an observed market listing where one exists, and the original placeholder everywhere else. Each vehicle is tagged with the basis it used.
+`build.py` uses a sourced observed market price where one exists, and the original placeholder everywhere else. Each vehicle is tagged with the basis it used.
 
 | Column | Meaning |
 | ------ | ------- |

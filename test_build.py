@@ -140,11 +140,14 @@ def check_readme_counts(rows):
     no_study = sum(1 for r in rows if 'no study data' in (r['longevity_source'] or ''))
     assert f'{no_study} of the {len(rows)} vehicles have no published figure' in readme, \
         (f'README longevity count is stale: data says {no_study} of {len(rows)}')
-    # A bare `str(count) in readme` is not a check: "4" matches "40,000" and
-    # "$48,815". Assert the whole sentence, so the number cannot drift silently.
+    # Substring matching keeps failing here. `str(4) in readme` matched
+    # "40,000"; "4 of the 79 rows..." is itself a substring of "14 of the 79
+    # rows...". Include the bold delimiters so the count is bounded on both
+    # sides and a wrong number cannot contain the right one.
     observed = sum(1 for r in rows if r.get('observed_price'))
-    claim = (f'{observed} of the {len(rows)} rows carry an observed price')
-    assert claim in readme, f'README is stale: expected the sentence "{claim}"'
+    claim = (f'**{observed} of the {len(rows)} rows carry an observed '
+             f'price today.**')
+    assert claim in readme, f'README is stale: expected exactly "{claim}"'
 
 
 if __name__ == '__main__':
