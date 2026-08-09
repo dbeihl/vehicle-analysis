@@ -82,6 +82,7 @@ def carry_forward(entry, failed_years):
             entry['years_answered'] = entry.pop(old)
     entry.setdefault('years_answered', len(entry.get('by_year') or {}))
     entry.setdefault('years_requested', len(YEARS))
+    entry.setdefault('years_no_data', [])
     entry['stale'] = True
     entry['comparable'] = False
     entry['failed_years'] = sorted(failed_years)

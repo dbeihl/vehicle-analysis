@@ -86,6 +86,7 @@ def main():
     assert not problems, 'price provenance incomplete:\n  ' + '\n  '.join(problems)
 
     check_price_resolution()
+    check_recall_status_classification()
     check_readme_counts(real)
 
     observed = sum(1 for r in real if r.get('observed_price'))
@@ -133,6 +134,50 @@ def check_price_resolution():
         assert build.price_problems([row]), f'gate accepted a bad row: {row}'
     assert not build.price_problems(
         [dict(name='ok', observed_price='1', price_year='2023', price_source='x')])
+
+
+def check_recall_status_classification():
+    """Pin the three outcomes fetch() must keep apart.
+
+    A 400 means NHTSA has nothing to say, which is not the same as a successful
+    response listing zero campaigns. Collapsing them made the cache assert zero
+    recalls for years the CX-5 was plainly on sale.
+    """
+    import io
+    import urllib.error
+    import fetch_recalls
+
+    real = fetch_recalls.urllib.request.urlopen
+    calls = []
+
+    def fake(kind):
+        def _open(url, timeout=None):
+            calls.append(url)
+            if kind == 'ok':
+                return io.BytesIO(b'{"results": []}')
+            raise urllib.error.HTTPError(url, kind, 'x', {}, None)
+        return _open
+
+    try:
+        fetch_recalls.urllib.request.urlopen = fake('ok')
+        assert fetch_recalls.fetch('m', 'x', 2021) == ([], 'ok'), \
+            'a successful empty response is zero campaigns, not missing data'
+
+        fetch_recalls.urllib.request.urlopen = fake(400)
+        assert fetch_recalls.fetch('m', 'x', 2021) == (None, 'no_data'), \
+            '400 must not be recorded as zero campaigns'
+
+        calls.clear()
+        fetch_recalls.urllib.request.urlopen = fake(503)
+        assert fetch_recalls.fetch('m', 'x', 2021, attempts=2) == (None, 'failed')
+        assert len(calls) == 2, f'5xx must retry, saw {len(calls)} attempt(s)'
+    finally:
+        fetch_recalls.urllib.request.urlopen = real
+
+    carried = fetch_recalls.carry_forward({'by_year': {'2019': 1}, 'years_sampled': 1}, [2021])
+    assert carried['stale'] and carried['comparable'] is False
+    assert 'years_sampled' not in carried and carried['years_answered'] == 1
+    assert carried['years_no_data'] == [], 'legacy entries must gain every current field'
 
 
 def check_readme_counts(rows):
