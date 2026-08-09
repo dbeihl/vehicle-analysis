@@ -115,7 +115,15 @@ def check_js_engine_parity(rows):
     # is inputs-independent -- nothing else compares them. A drifted input
     # set makes every downstream "ok" claim false about the actual page.
     fixture = json.loads((root / 'data' / 'engine-fixture.json').read_text())
-    assert fixture['_inputs'] == build.INPUTS, (
+    # Compare only the computational inputs, not underscore-prefixed metadata
+    # (_comment, _currency). engine.js never reads a key starting with '_'
+    # (grep confirms it), so a metadata-only addition to data/inputs.json is
+    # not the drift this check exists to catch -- and the frozen fixture is
+    # never regenerated to chase a metadata-only key, so filtering both sides
+    # is required rather than just the live side.
+    live = {k: v for k, v in build.INPUTS.items() if not k.startswith('_')}
+    frozen = {k: v for k, v in fixture['_inputs'].items() if not k.startswith('_')}
+    assert frozen == live, (
         'data/inputs.json has drifted from the inputs the oracle was frozen '
         'at -- regenerate data/engine-fixture.json with `python3 '
         'freeze_fixture.py`')
@@ -176,12 +184,42 @@ def check_price_resolution():
         dict(name='i', msrp_source='KBB'),                              # orphaned msrp_source
         dict(name='j', observed_price='1', price_year='2023',
              price_source='x'),                                 # no anchor
+        # Plausibility. The CAD figure that prompted this was $60,585 for a
+        # CR-V Hybrid whose real US price is nearer $35-40k, so the bound has
+        # to be wide enough for a real Escalade and tight enough to catch a
+        # currency error on a mainstream crossover.
+        dict(name='k', observed_price='400000', price_year='2023',
+             price_source='x', observed_price_odometer='40000'),   # too high
+        dict(name='l', observed_price='250', price_year='2023',
+             price_source='x', observed_price_odometer='40000'),   # too low
+        dict(name='m', price='0'),                                 # zero placeholder
     ]
     for row in rejected:
         assert build.price_problems([row]), f'gate accepted a bad row: {row}'
+    # observed_price='1' was a placeholder-era convention meaning "amount
+    # irrelevant, only provenance completeness matters." The plausibility
+    # gate above retires that convention -- $1 is now itself implausible --
+    # so this "everything is fine" row needs an amount inside PRICE_BOUNDS.
     assert not build.price_problems(
-        [dict(name='ok', observed_price='1', price_year='2023', price_source='x',
+        [dict(name='ok', observed_price='31500', price_year='2023', price_source='x',
               observed_price_odometer='40000')])
+
+    # category_ceiling must exclude the row under test from its own peer set.
+    # Folding it in was the first version and does not work: an inflated
+    # price becomes a candidate for the very max it is compared against, so
+    # it becomes its own category's ceiling and can never exceed
+    # CATEGORY_HEADROOM times itself. That silently passed the $60,585 CR-V
+    # simulation in verification until this exclusion was added -- these two
+    # cases pin the fix so it cannot regress.
+    at_cap = [dict(name='p', category='Test cat', price='20000'),
+              dict(name='q', category='Test cat', price='40000')]
+    assert not build.price_problems(at_cap), \
+        'exactly 2x a peer (not counting self) must not fire -- the bound is strict'
+    over_cap = [dict(name='p', category='Test cat', price='20000'),
+                dict(name='q', category='Test cat', price='40001')]
+    assert build.price_problems(over_cap), \
+        'a row priced over 2x its OTHER peers must be rejected even though ' \
+        'it is also, trivially, the max of its own category'
 
 
 def check_recall_status_classification():

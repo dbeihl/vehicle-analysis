@@ -68,6 +68,8 @@ Do not edit `price`. Add `observed_price` alongside it:
 
 `build.py` uses a sourced observed market price where one exists, and the original placeholder everywhere else. Each vehicle is tagged with the basis it used.
 
+Every monetary figure in this project is USD. As a data-entry check against a foreign-currency or decimal-point error, `build.py` rejects a price outside a plausible USD range, or more than double the highest in its own category.
+
 | Column | Meaning |
 | ------ | ------- |
 | `observed_price` | A sourced market price for that model year. Preferred over everything. The aggregation varies and `price_source` records it: the Highlander Hybrid is an average across 879 listings, the Escalade a median across three services that disagreed by $5,000 |

@@ -1,5 +1,6 @@
 {
   "_comment": "Inputs tab of vehicle-turnover-planner.xlsx. Sources on the Sources tab.",
+  "_currency": "USD",
   "annual_miles": 55000,
   "buy_odometer": 40000,
   "sell_odometer": 180000,

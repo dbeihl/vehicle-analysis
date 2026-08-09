@@ -27,6 +27,20 @@ MARKER = 'const MODELS = '
 REQUIRED_ENGINE_FIELDS = ('price', 'mpg', 'fuel', 'deprec5yr', 'tireClass',
                           'observedPrice', 'observedAt')
 
+# Every monetary figure in this project is USD. These bounds are a data-entry
+# check, not a currency detector: a passenger vehicle outside this range is an
+# error of units or of decimal point. The case that motivated it was a search
+# returning $60,585 for a Honda CR-V Hybrid -- a Canadian dealer quoting CAD,
+# roughly 35% high, caught only because it looked wrong beside its siblings.
+PRICE_BOUNDS = (5000, 250000)
+
+# A global bound alone would NOT have caught the case that motivated this:
+# $60,585 sits comfortably inside it. Category ceilings do -- compact
+# crossovers in this dataset span $19,000-$30,000, so a CAD figure at double
+# the ceiling is unmistakable. The multiplier is deliberately loose: this is
+# a data-entry check, not a pricing model, and a real outlier should survive.
+CATEGORY_HEADROOM = 2.0
+
 
 def buy_price(v, inp):
     """Price at the buy odometer, and the basis it came from.
@@ -43,6 +57,29 @@ def buy_price(v, inp):
     if v.get('observed_price'):
         return float(v['observed_price']), 'observed'
     return float(v['price']), 'placeholder'
+
+
+def category_ceiling(rows, category, exclude):
+    """Highest placeholder price among a category's OTHER rows, or None if
+    none remain once the row under test is excluded.
+
+    Used only as a sanity ceiling. Reads `price` rather than the resolved buy
+    price so the bound does not move as observed prices are added.
+
+    `exclude` (the row under test, by identity) must be left out of its own
+    peer set. Folding it in was tried first and does not work: whatever price
+    is being checked on that row becomes a candidate for the very max it is
+    being compared against, so an inflated `price` simply becomes the new
+    ceiling of its own category and `amount > cap * CATEGORY_HEADROOM` can
+    never be true for it. That is precisely the failure mode this check
+    exists to catch -- a self-inclusive ceiling cannot catch a self-inflated
+    price. Singletons still resolve to None here, same as before: excluding
+    the one row in a one-row category leaves zero peers.
+    """
+    peers = [float(r['price']) for r in rows
+             if r.get('category') == category and r is not exclude
+             and str(r.get('price', '')).strip()]
+    return max(peers) if peers else None
 
 
 def price_problems(rows):
@@ -87,6 +124,29 @@ def price_problems(rows):
             for orphan in ('msrp_year', 'msrp_trim', 'msrp_source'):
                 if v.get(orphan):
                     problems.append(f'{name}: {orphan} set without an msrp')
+
+        for field in ('price', 'observed_price', 'msrp', 'mix_price'):
+            raw = str(v.get(field, '')).strip()
+            if raw == '':
+                continue
+            try:
+                amount = float(raw)
+            except ValueError:
+                problems.append(f'{name}: {field} is not a number: {raw!r}')
+                continue
+            lo, hi = PRICE_BOUNDS
+            cap = category_ceiling(rows, v.get('category'), exclude=v)
+            if cap and amount > cap * CATEGORY_HEADROOM:
+                problems.append(
+                    f'{name}: {field} of ${amount:,.0f} is more than '
+                    f'{CATEGORY_HEADROOM:g}x the highest {v["category"]} price '
+                    f'(${cap:,.0f}). All figures are USD; check for a '
+                    f'foreign-currency error')
+            if not lo <= amount <= hi:
+                problems.append(
+                    f'{name}: {field} of ${amount:,.0f} is outside the plausible '
+                    f'USD range ${lo:,}-${hi:,}. All figures in this project are '
+                    f'USD; check for a foreign-currency or decimal-point error')
     return problems
 
 
