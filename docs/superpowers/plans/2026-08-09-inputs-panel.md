@@ -281,7 +281,7 @@ Run `python3 build.py && python3 test_build.py`, then open `index.html`:
 - Opening it and setting gas to `4.75` changes the chart, and the strip gains `· edited` and turns teal.
 - Typing `0` into annual miles marks the field invalid and **does not** redraw the chart.
 - Setting the sell odometer below the buy odometer is rejected.
-- Reset restores every field and clears the edited marker.
+- Reset restores every field and clears the edited marker. It is scoped to the assumptions, so it does not reset the weights, filter, or selection, and the hash only clears if those are already at defaults.
 
 - [ ] **Step 6: Commit**
 
@@ -399,7 +399,7 @@ Call `readHash()` before the first `drawFields()`/`render()`, and `writeHash()` 
 
 - Change gas to 4.75 and select a vehicle; the URL grows `#gas_per_gal=4.75&v=...`.
 - Reload: the same view returns, panel closed, strip showing `· edited`.
-- Reset: the hash clears.
+- Reset: the assumption params leave the hash. Weights, filter, and selection are not reset by it, so the hash only empties if they are already at defaults.
 - Paste `#gas_per_gal=abc&nonsense=1&sell_odometer=5` — the page loads at defaults, nothing half-applied.
 
 - [ ] **Step 3: Commit**
