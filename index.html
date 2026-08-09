@@ -55,11 +55,11 @@
   .meta{font-family:var(--mono); font-size:11px; color:var(--ink2); margin-bottom:6px; line-height:1.45}
   .prov{font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase;
         color:var(--ink3); font-weight:400; margin-left:4px}
-  .prov{font-family:var(--mono); font-size:9px; letter-spacing:.08em;
+  .pbadge{font-family:var(--mono); font-size:9px; letter-spacing:.08em;
         text-transform:uppercase; margin-left:6px; padding:2px 5px}
-  .prov-observed{background:var(--signalSoft); color:var(--signal)}
-  .prov-derived{background:#EFE3CC; color:var(--amber)}
-  .prov-placeholder{background:var(--ruleSoft); color:var(--ink3)}
+  .pbadge-observed{background:var(--signalSoft); color:var(--signal)}
+  .pbadge-derived{background:#EFE3CC; color:var(--amber)}
+  .pbadge-placeholder{background:var(--ruleSoft); color:var(--ink3)}
   .bars{margin:0 0 10px}
   .barrow{display:flex; align-items:center; gap:8px; margin-bottom:5px}
   .bk{font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase;
@@ -488,7 +488,7 @@ function drawDetail(st){
   h+='</div><div class="grid4">'+
     kv('Cost/mile','$'+m.cpm.toFixed(3))+kv('Per year','$'+Math.round(m.peryr).toLocaleString())+
     kv('Buy price','$'+Math.round(m.price).toLocaleString()+
-      '<span class="prov prov-'+m.priceBasis+'">'+
+      '<span class="pbadge pbadge-'+m.priceBasis+'">'+
       (m.priceBasis==='observed'?'listed':m.priceBasis==='derived'?'scaled':'estimate')+
       '</span>')+kv('Highway MPG',m.mpg.toFixed(1))+'</div>'+
     '<div class="bars">'+
@@ -548,6 +548,9 @@ document.getElementById('sliders').innerHTML=AXES.map(function(a,i){
     '<input type="range" id="r'+i+'" min="0" max="100" value="'+W[i]+'" aria-label="'+a[0]+' weight">'+
     '<div class="hint">'+a[2]+'</div>'}).join('');
 
+function syncSliders(){
+  AXES.forEach(function(a,i){document.getElementById('r'+i).value=W[i]});
+}
 AXES.forEach(function(a,i){
   document.getElementById('r'+i).addEventListener('input',function(e){
     W[i]=+e.target.value; PRESET='Custom'; render();
@@ -557,7 +560,7 @@ document.getElementById('presets').addEventListener('click',function(e){
   var b=e.target.closest('.chip'); if(!b)return;
   var p=PRESETS.filter(function(x){return x.n===b.dataset.n})[0]; if(!p)return;
   W=p.w.slice(); PRESET=p.n;
-  AXES.forEach(function(a,i){document.getElementById('r'+i).value=W[i]});
+  syncSliders();
   render();
 });
 document.getElementById('filters').addEventListener('click',function(e){
@@ -578,9 +581,11 @@ document.getElementById("assumeReset").addEventListener("click",function(){
   FIELDS.forEach(function(f){INPUTS[f.k]=DEFAULTS[f.k];
     var el=document.getElementById("f_"+f.k);
     el.value=DEFAULTS[f.k]; el.removeAttribute("aria-invalid")});
+  syncSliders();
   render();
 });
 readHash();
+syncSliders();
 drawFields();
 
 render();
