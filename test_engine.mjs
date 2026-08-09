@@ -16,14 +16,29 @@ const TOL = 1e-12;
 let checked = 0, worst = -Infinity, worstName = '';
 
 // Structural checks on the dump for one variant, run once before its
-// per-vehicle parity loop below. An empty `models` array would otherwise let
-// the loop underneath do nothing and still report "ok" -- the same "assertion
-// that could never fail" shape this suite exists to catch elsewhere. Later
-// tasks append further per-variant assertions here rather than inline in the
-// loop, so they stay in one place as the fixture grows.
+// per-vehicle parity loop below. Checking only for a non-empty `models`
+// array is not enough: a dump truncated to 39 of 79 rows is still non-empty,
+// and the loop underneath would happily report "ok" having compared fewer
+// than half the fixture -- an under-test wearing a pass. The invariant that
+// actually matters is coverage of ground truth, so this compares against
+// data/engine-fixture.json itself, not against whatever the caller dumped.
+// Later tasks append further per-variant assertions here rather than inline
+// in the loop, so they stay in one place as the fixture grows.
 function assertVariantShape(variant, models) {
-  if (models.length === 0) {
-    throw new Error(`${variant}: build-models.json has no models -- refusing to report a vacuous pass`);
+  const expectedNames = Object.keys(fixture[variant]);
+  if (models.length !== expectedNames.length) {
+    throw new Error(
+      `${variant}: dumped ${models.length} models, fixture has ${expectedNames.length} -- ` +
+      `every fixture entry must be compared`);
+  }
+  // Cheap reverse check: same count could still hide a substitution (a
+  // duplicated name in place of a missing one). Confirm every fixture name
+  // was actually present in the dump, not just that the counts matched.
+  const seen = new Set();
+  for (const m of models) seen.add(m.name);
+  const missing = expectedNames.filter(name => !seen.has(name));
+  if (missing.length > 0) {
+    throw new Error(`${variant}: fixture entries never compared: ${missing.join(', ')}`);
   }
 }
 
