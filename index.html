@@ -359,6 +359,32 @@ function drawFields(){
     });
   });
 }
+function writeHash(){
+  var p=[];
+  FIELDS.forEach(function(f){if(INPUTS[f.k]!==DEFAULTS[f.k])p.push(f.k+"="+INPUTS[f.k])});
+  if(W.join(",")!=="25,15,15,10,20,15")p.push("w="+W.join(","));
+  if(FILT!=="all")p.push("f="+FILT);
+  if(SEL)p.push("v="+encodeURIComponent(SEL));
+  var h=p.join("&");
+  history.replaceState(null,"",h?"#"+h:location.pathname);
+}
+function readHash(){
+  /* A malformed or stale link must land on the defaults rather than a
+     half-applied state. Anything unrecognised is dropped silently. */
+  var h=location.hash.replace(/^#/,""); if(!h)return;
+  h.split("&").forEach(function(kv){
+    var i=kv.indexOf("="); if(i<0)return;
+    var k=kv.slice(0,i), v=decodeURIComponent(kv.slice(i+1));
+    if(k==="w"){var a=v.split(",").map(Number);
+      if(a.length===6&&a.every(function(n){return isFinite(n)&&n>=0&&n<=100})){W=a;PRESET="Custom"}
+      return}
+    if(k==="f"){if(FILTERS.some(function(x){return x.k===v}))FILT=v; return}
+    if(k==="v"){if(MODELS.some(function(m){return m.name===v}))SEL=v; return}
+    for(var j=0;j<FIELDS.length;j++){
+      if(FIELDS[j].k===k){var n=parseFloat(v); if(fieldValid(FIELDS[j],n))INPUTS[k]=n; return}
+    }
+  });
+}
 
 function passes(m,k){
   if(k==="all")return true;
@@ -508,6 +534,7 @@ function render(){
   var tog=document.getElementById("assumeToggle");
   tog.textContent=summaryText();
   tog.setAttribute("data-dirty",inputsChanged()?"true":"false");
+  writeHash();
 }
 
 // build controls
@@ -553,6 +580,7 @@ document.getElementById("assumeReset").addEventListener("click",function(){
     el.value=DEFAULTS[f.k]; el.removeAttribute("aria-invalid")});
   render();
 });
+readHash();
 drawFields();
 
 render();
