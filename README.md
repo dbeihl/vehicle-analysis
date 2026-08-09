@@ -82,6 +82,18 @@ Do not edit `price`. Add `observed_price` alongside it:
 
 **4 of the 79 rows carry an observed price today.** Until that number is much higher, the ranking is biased toward whatever is still on a placeholder. A partially corrected dataset is more misleading than a uniformly wrong one: uniform error largely cancels in a ranking, and partial correction does not.
 
+## Adjusting the assumptions
+
+The eyebrow summary under the masthead is a button. Click it to open a panel where you can change eleven cost assumptions. The summary reads like `55,000 mi/yr · buy at 40k · sell at 180k · gas $3.55 — change`. When you edit any field, it appends ` · edited` in teal so you can see at a glance that something differs from the defaults.
+
+The eleven fields are split into two groups. The first group can change which vehicle ranks highest: annual mileage, the buy and sell odometers, and fuel prices. The second group, labeled "Budget only", shifts every cost per mile by the same amount without reordering the vehicles. Those figures — tire costs, tire life, maintenance rates, insurance, and registration — are identical for every vehicle, so adjusting them moves the cost axis but not the frontier's shape.
+
+The panel validates as you type. Numbers must fall within published ranges. The buy odometer cannot equal or exceed the sell odometer in either direction; if you try, the field rejects the input and marks itself invalid.
+
+When you adjust the buy odometer, any observed price shifts with you. If a price was measured at a different mileage, the tool rescales it along that vehicle's own depreciation curve so the comparison stays honest. A price observed at a market listing is labelled `listed`. A price scaled to a different odometer is labelled `scaled`. An estimate carrying no source is labelled `estimate`.
+
+Clicking Reset restores all eleven assumption fields to their defaults. It does not reset the weight sliders, the category filter, or your selection. The view encodes into the URL fragment: changed inputs, weights, filter, and selection all persist when you share a link. A malformed fragment or stale link lands on the defaults rather than a half-applied state.
+
 ## The six axes are not equally trustworthy
 
 - **Cost** is computed from the workbook.
