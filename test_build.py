@@ -17,6 +17,19 @@ import re
 
 import build
 
+# Underscore-prefixed keys in data/inputs.json that are documentation, not a
+# computational input engine.js reads. This is a closed allowlist on
+# purpose, not a leading-underscore heuristic: a prefix test would let any
+# *future* underscore-prefixed key opt itself out of check_js_engine_parity's
+# drift comparison just by being named that way -- including a computational
+# one someone wires into engine.js as `inp._something`. test_engine.mjs runs
+# engine.js against the frozen fixture, not live INPUTS, so that comparison
+# is the only check tying data/inputs.json to what test_engine.mjs actually
+# exercises; silently exempting a key there is silently disabling the check.
+# A new metadata key needs a conscious edit here, the same way an unknown
+# provenance field is an error rather than a silent skip in price_problems.
+METADATA_KEYS = {'_comment', '_currency'}
+
 
 def main():
     # Price provenance, checked against the real rows. A price with no
@@ -115,14 +128,21 @@ def check_js_engine_parity(rows):
     # is inputs-independent -- nothing else compares them. A drifted input
     # set makes every downstream "ok" claim false about the actual page.
     fixture = json.loads((root / 'data' / 'engine-fixture.json').read_text())
-    # Compare only the computational inputs, not underscore-prefixed metadata
-    # (_comment, _currency). engine.js never reads a key starting with '_'
-    # (grep confirms it), so a metadata-only addition to data/inputs.json is
-    # not the drift this check exists to catch -- and the frozen fixture is
-    # never regenerated to chase a metadata-only key, so filtering both sides
-    # is required rather than just the live side.
-    live = {k: v for k, v in build.INPUTS.items() if not k.startswith('_')}
-    frozen = {k: v for k, v in fixture['_inputs'].items() if not k.startswith('_')}
+    # An underscore-prefixed key that is not in METADATA_KEYS must fail here
+    # rather than silently fall out of the comparison below on either side --
+    # otherwise a future computational input named with a leading underscore
+    # would escape this check by naming convention alone, and test_engine.mjs
+    # would keep reporting "ok" while checking engine.js against a frozen
+    # fixture that never saw it.
+    unknown = ({k for k in build.INPUTS if k.startswith('_')}
+              | {k for k in fixture['_inputs'] if k.startswith('_')}) - METADATA_KEYS
+    assert not unknown, (
+        f'unrecognised underscore-prefixed key(s) {sorted(unknown)} in '
+        'data/inputs.json or its frozen fixture -- add to test_build.py\'s '
+        'METADATA_KEYS if this is documentation, not a computational input')
+    # Compare only the computational inputs, not the allowlisted metadata.
+    live = {k: v for k, v in build.INPUTS.items() if k not in METADATA_KEYS}
+    frozen = {k: v for k, v in fixture['_inputs'].items() if k not in METADATA_KEYS}
     assert frozen == live, (
         'data/inputs.json has drifted from the inputs the oracle was frozen '
         'at -- regenerate data/engine-fixture.json with `python3 '
