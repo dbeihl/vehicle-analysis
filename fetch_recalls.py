@@ -39,11 +39,14 @@ def split_name(name):
 def fetch(make, model, year, attempts=3):
     """Return (results, status).
 
-    status is 'ok', 'not_offered' when NHTSA rejects the combination -- which
-    is usually genuine, the Grand Highlander did not exist in 2019 -- or
-    'failed' when the request never succeeded. The three are not
-    interchangeable: averaging over a year that failed silently understates a
-    nameplate, while averaging over a year the vehicle was never sold is fine.
+    status is 'ok', 'no_data' when NHTSA answers 400, or 'failed' when the
+    request never succeeded.
+
+    A 400 does NOT mean the vehicle was not sold. The Mazda CX-5 returns 400
+    for 2021 and 2023 and is obviously sold in both. It means NHTSA has nothing
+    to say about that combination, and "nothing to say" is not "zero recalls".
+    Recording a 0 for those years asserts a fact the API never supplied, so
+    no_data years are omitted from by_year entirely rather than counted.
     """
     q = urllib.parse.urlencode(dict(make=make, model=model, modelYear=year))
     url = f'https://api.nhtsa.gov/recalls/recallsByVehicle?{q}'
@@ -53,7 +56,7 @@ def fetch(make, model, year, attempts=3):
                 return json.load(fh).get('results') or [], 'ok'
         except urllib.error.HTTPError as exc:
             if exc.code == 400:
-                return [], 'not_offered'
+                return None, 'no_data'
             if exc.code < 500:
                 return None, 'failed'
         except Exception:
@@ -74,9 +77,10 @@ def carry_forward(entry, failed_years):
     refreshed rather than letting it pass as current.
     """
     entry = dict(entry)
-    if 'years_sampled' in entry:                    # pre-2026-08 schema
-        entry['years_offered'] = entry.pop('years_sampled')
-    entry.setdefault('years_offered', len(entry.get('by_year') or {}))
+    for old in ('years_sampled', 'years_offered'):   # earlier schemas
+        if old in entry:
+            entry['years_answered'] = entry.pop(old)
+    entry.setdefault('years_answered', len(entry.get('by_year') or {}))
     entry.setdefault('years_requested', len(YEARS))
     entry['stale'] = True
     entry['comparable'] = False
@@ -96,15 +100,16 @@ def main():
             print(f'  ? unparsed make: {name}', file=sys.stderr)
             continue
 
-        counts, powertrain, offered, failed = {}, set(), 0, []
+        counts, powertrain, failed, unknown = {}, set(), [], []
         for y in YEARS:
             rs, status = fetch(make, model, y)
             if status == 'failed':
                 failed.append(y)
                 continue
+            if status == 'no_data':
+                unknown.append(y)       # omitted, not recorded as zero
+                continue
             counts[y] = len(rs)
-            if status == 'ok':
-                offered += 1
             for r in rs:
                 comp = (r.get('Component') or '').upper()
                 if 'TRANSMISSION' in comp or 'POWER TRAIN' in comp:
@@ -124,24 +129,25 @@ def main():
                   file=sys.stderr)
             continue
 
-        if not offered:                      # never sold in any sampled year
+        if not counts:                       # NHTSA answered for no sampled year
             dropped.append(name)
             continue
 
+        answered = len(counts)
         out[name] = {
             'make': make, 'model': model, 'by_year': counts,
-            'per_year': round(sum(counts.values()) / offered, 2),
+            'per_year': round(sum(counts.values()) / answered, 2),
             'powertrain_years': sorted(powertrain),
-            'years_offered': offered,
+            'years_answered': answered,
             'years_requested': len(YEARS),
-            # per_year is an average over years_offered, which is not always
-            # years_requested -- a nameplate sold in one sampled year gets a
-            # one-year average. Ranking nameplates on per_year without checking
-            # this compares different denominators. 28 of 71 are below full.
-            'comparable': offered == len(YEARS),
+            'years_no_data': sorted(unknown),
+            # per_year averages over years_answered, not years_requested.
+            # Ranking nameplates on it without checking compares different
+            # denominators.
+            'comparable': answered == len(YEARS),
         }
         print(f'{name:<40} {out[name]["per_year"]:>6} campaigns/yr'
-              f'  ({offered}/{len(YEARS)} yr)'
+              f'  ({answered}/{len(YEARS)} yr)'
               f'{"  POWERTRAIN" if powertrain else ""}')
 
     # Atomic replace, so an interrupted run cannot leave a truncated cache.
