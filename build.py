@@ -42,6 +42,16 @@ PRICE_BOUNDS = (5000, 250000)
 CATEGORY_HEADROOM = 2.0
 
 
+def row_key(v):
+    """Stable identity for a row: nameplate plus trim.
+
+    Used as the key in data/engine-fixture.json and in the workbook
+    assertions. A bare nameplate stops being unique as soon as one vehicle
+    carries more than one trim.
+    """
+    return f"{v['name']}|{v.get('trim') or 'unspecified'}"
+
+
 def buy_price(v, inp):
     """Price at the buy odometer, and the basis it came from.
 
@@ -92,6 +102,12 @@ def price_problems(rows):
     problems = []
     for v in rows:
         name = v['name']
+        if v.get('trim') not in ('base', 'volume', 'loaded', 'unspecified'):
+            problems.append(f'{name}: trim must be base, volume, loaded, or '
+                            f'unspecified; got {v.get("trim")!r}')
+        if v.get('trim') in ('base', 'volume', 'loaded') and not v.get('trim_name'):
+            problems.append(f'{name}: trim {v["trim"]!r} without trim_name -- '
+                            f'a tier needs the badge a reader would recognise')
         if v.get('observed_price'):
             if not v.get('price_year'):
                 problems.append(f'{name}: observed_price without price_year')
@@ -188,6 +204,8 @@ def build_models(rows, inp):
         price, basis = buy_price(v, inp)
         out.append({
             'name': v['name'], 'cat': v['category'], 'tier': v['tier'],
+            'key': row_key(v),
+            'trimName': v.get('trim_name') or '',
             'price': int(round(price)), 'priceBasis': basis,
             'priceYear': v.get('price_year') or '', 'mpg': num(v['mpg']), 'fuel': v['fuel'],
             'gvwr': v['gvwr_note'],

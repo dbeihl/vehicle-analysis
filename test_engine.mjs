@@ -37,7 +37,7 @@ function assertVariantShape(variant, models) {
   // duplicated name in place of a missing one). Confirm every fixture name
   // was actually present in the dump, not just that the counts matched.
   const seen = new Set();
-  for (const m of models) seen.add(m.name);
+  for (const m of models) seen.add(m.key);
   const missing = expectedNames.filter(name => !seen.has(name));
   if (missing.length > 0) {
     throw new Error(`${variant}: fixture entries never compared: ${missing.join(', ')}`);
@@ -73,7 +73,7 @@ for (const variant of ['full', 'workbook_oracle']) {
   assertVariantShape(variant, models);
 
   for (const v of models) {
-    const expected = fixture[variant][v.name];
+    const expected = fixture[variant][v.key];
     if (!expected) throw new Error(`fixture has no ${variant} entry for ${v.name}`);
     const got = VA.costPerMile(v, inputs);
     if (!Number.isFinite(got)) throw new Error(`${v.name} (${variant}): got ${got}`);
@@ -100,19 +100,20 @@ const models = dumped.workbook_oracle;
    spreadsheet formulas, so they are the only oracle not written by this
    codebase. Computed on placeholder prices, hence the stripped variant. */
 const PUBLISHED = {
-  'Honda HR-V': 0.426, 'Ford Escape Hybrid': 0.441, 'Toyota Venza': 0.457,
-  'Nissan Rogue': 0.459, 'Ford Maverick Hybrid': 0.460,
-  'Toyota Highlander Hybrid': 0.517, 'Honda Ridgeline': 0.519,
-  'Toyota Grand Highlander Hybrid': 0.580, 'Chevrolet Tahoe': 0.674,
-  'Chevrolet Tahoe 3.0L Duramax': 0.703,
-  'Toyota Sequoia (pre-2023 5.7 V8)': 0.717
+  'Honda HR-V|unspecified': 0.426, 'Ford Escape Hybrid|unspecified': 0.441,
+  'Toyota Venza|unspecified': 0.457, 'Nissan Rogue|unspecified': 0.459,
+  'Ford Maverick Hybrid|unspecified': 0.460,
+  'Toyota Highlander Hybrid|unspecified': 0.517, 'Honda Ridgeline|unspecified': 0.519,
+  'Toyota Grand Highlander Hybrid|unspecified': 0.580, 'Chevrolet Tahoe|unspecified': 0.674,
+  'Chevrolet Tahoe 3.0L Duramax|unspecified': 0.703,
+  'Toyota Sequoia (pre-2023 5.7 V8)|unspecified': 0.717
 };
-for (const [name, expected] of Object.entries(PUBLISHED)) {
-  const m = models.find(x => x.name === name);
-  if (!m) throw new Error(`${name} missing from the dataset`);
+for (const [key, expected] of Object.entries(PUBLISHED)) {
+  const m = models.find(x => x.key === key);
+  if (!m) throw new Error(`${key} missing from the dataset`);
   const got = VA.costPerMile({ ...m, observedPrice: null }, inputs);
   if (Math.abs(got - expected) >= 0.001) {
-    throw new Error(`${name}: workbook says ${expected}/mi, engine computes ${got}`);
+    throw new Error(`${key}: workbook says ${expected}/mi, engine computes ${got}`);
   }
 }
 console.log(`ok: ${Object.keys(PUBLISHED).length} published $/mile figures match`);
@@ -135,7 +136,8 @@ const BALANCED = inputs.default_weights;
 const EXPECTED_WINNER = 'Toyota Highlander Hybrid';
 const EXPECTED_SCORE = 89.9;
 const EXPECTED_FRONTIER = new Set([
-  'Toyota Highlander Hybrid', 'Toyota Venza', 'Ford Escape Hybrid', 'Honda HR-V'
+  'Toyota Highlander Hybrid|unspecified', 'Toyota Venza|unspecified',
+  'Ford Escape Hybrid|unspecified', 'Honda HR-V|unspecified'
 ]);
 
 const cpms = models.map(m => VA.costPerMile(m, inputs));
@@ -167,7 +169,7 @@ const frontier = new Set(
   scored.filter(m => !scored.some(o =>
     o !== m && o.cost >= m.cost && o.value >= m.value &&
     (o.cost > m.cost || o.value > m.value)
-  )).map(m => m.name)
+  )).map(m => m.key)
 );
 const frontierOk = frontier.size === EXPECTED_FRONTIER.size &&
   [...frontier].every(n => EXPECTED_FRONTIER.has(n));

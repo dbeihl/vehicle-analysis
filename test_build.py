@@ -41,6 +41,7 @@ def main():
 
     check_price_resolution()
     check_emitted_schema(real)
+    check_row_keys(real)
     check_page_up_to_date(real)
     check_js_engine_parity(real)
     check_recall_status_classification()
@@ -75,6 +76,36 @@ def check_emitted_schema(rows):
         baked_in = [f for f in ('cpm', 'peryr', 'cost') if f in m]
         assert not baked_in, \
             f'{m["name"]}: cost fields must be computed client-side, not emitted: {baked_in}'
+
+
+def check_row_keys(rows):
+    """Row identity is (nameplate, trim), and it must be unique.
+
+    Every map keyed by bare name -- the engine fixture, the recall cache, the
+    workbook assertions -- collides the moment one nameplate appears twice.
+    """
+    seen = {}
+    for v in rows:
+        key = build.row_key(v)
+        assert key not in seen, f'duplicate row key {key!r}'
+        seen[key] = v
+    assert len(seen) == len(rows)
+
+    # Tiers are only meaningful once a nameplate has more than one row. Until
+    # then 'unspecified' is correct and must not be mistaken for a real tier.
+    valid = {'base', 'volume', 'loaded', 'unspecified'}
+    for v in rows:
+        assert v['trim'] in valid, f'{v["name"]}: unknown trim {v["trim"]!r}'
+
+    # Partial population is the failure mode: one trim assigned and the rest
+    # left unspecified would silently compare a tier against a non-tier.
+    by_plate = {}
+    for v in rows:
+        by_plate.setdefault(v['name'], []).append(v['trim'])
+    for plate, trims in by_plate.items():
+        real = [t for t in trims if t != 'unspecified']
+        assert not real or len(real) == len(trims), \
+            f'{plate}: partially assigned trims {trims}'
 
 
 def check_page_up_to_date(rows):
@@ -191,28 +222,33 @@ def check_price_resolution():
     amount, basis = build.buy_price(dict(base), inp)
     assert (amount, basis) == (30000.0, 'placeholder')
 
-    # Every provenance combination the gate is supposed to reject.
+    # Every provenance combination the gate is supposed to reject. Each row
+    # carries trim='unspecified' so its rejection is pinned to the specific
+    # violation under test, not incidentally caused by the trim check too --
+    # otherwise these would be assertions that could never fail.
     rejected = [
-        dict(name='a', observed_price='1', price_source='x'),           # no year
-        dict(name='b', observed_price='1', price_year='2023'),          # no source
-        dict(name='c', price_year='2023'),                              # orphaned year
-        dict(name='d', price_source='x'),                               # orphaned source
-        dict(name='e', msrp='1', msrp_year='2026', msrp_source='x'),    # no trim
-        dict(name='f', msrp='1', msrp_trim='XLE', msrp_source='x'),     # no year
-        dict(name='g', msrp_year='2026'),                               # orphaned msrp_year
-        dict(name='h', msrp_trim='XLE'),                                # orphaned msrp_trim
-        dict(name='i', msrp_source='KBB'),                              # orphaned msrp_source
-        dict(name='j', observed_price='1', price_year='2023',
+        dict(name='a', trim='unspecified', observed_price='1', price_source='x'),  # no year
+        dict(name='b', trim='unspecified', observed_price='1', price_year='2023'),  # no source
+        dict(name='c', trim='unspecified', price_year='2023'),                  # orphaned year
+        dict(name='d', trim='unspecified', price_source='x'),                   # orphaned source
+        dict(name='e', trim='unspecified', msrp='1', msrp_year='2026',
+             msrp_source='x'),                                          # no trim
+        dict(name='f', trim='unspecified', msrp='1', msrp_trim='XLE',
+             msrp_source='x'),                                          # no year
+        dict(name='g', trim='unspecified', msrp_year='2026'),           # orphaned msrp_year
+        dict(name='h', trim='unspecified', msrp_trim='XLE'),            # orphaned msrp_trim
+        dict(name='i', trim='unspecified', msrp_source='KBB'),          # orphaned msrp_source
+        dict(name='j', trim='unspecified', observed_price='1', price_year='2023',
              price_source='x'),                                 # no anchor
         # Plausibility. The CAD figure that prompted this was $60,585 for a
         # CR-V Hybrid whose real US price is nearer $35-40k, so the bound has
         # to be wide enough for a real Escalade and tight enough to catch a
         # currency error on a mainstream crossover.
-        dict(name='k', observed_price='400000', price_year='2023',
+        dict(name='k', trim='unspecified', observed_price='400000', price_year='2023',
              price_source='x', observed_price_odometer='40000'),   # too high
-        dict(name='l', observed_price='250', price_year='2023',
+        dict(name='l', trim='unspecified', observed_price='250', price_year='2023',
              price_source='x', observed_price_odometer='40000'),   # too low
-        dict(name='m', price='0'),                                 # zero placeholder
+        dict(name='m', trim='unspecified', price='0'),                    # zero placeholder
     ]
     for row in rejected:
         assert build.price_problems([row]), f'gate accepted a bad row: {row}'
@@ -221,8 +257,8 @@ def check_price_resolution():
     # gate above retires that convention -- $1 is now itself implausible --
     # so this "everything is fine" row needs an amount inside PRICE_BOUNDS.
     assert not build.price_problems(
-        [dict(name='ok', observed_price='31500', price_year='2023', price_source='x',
-              observed_price_odometer='40000')])
+        [dict(name='ok', trim='unspecified', observed_price='31500', price_year='2023',
+              price_source='x', observed_price_odometer='40000')])
 
     # category_ceiling must exclude the row under test from its own peer set.
     # Folding it in was the first version and does not work: an inflated
@@ -231,12 +267,12 @@ def check_price_resolution():
     # CATEGORY_HEADROOM times itself. That silently passed the $60,585 CR-V
     # simulation in verification until this exclusion was added -- these two
     # cases pin the fix so it cannot regress.
-    at_cap = [dict(name='p', category='Test cat', price='20000'),
-              dict(name='q', category='Test cat', price='40000')]
+    at_cap = [dict(name='p', trim='unspecified', category='Test cat', price='20000'),
+              dict(name='q', trim='unspecified', category='Test cat', price='40000')]
     assert not build.price_problems(at_cap), \
         'exactly 2x a peer (not counting self) must not fire -- the bound is strict'
-    over_cap = [dict(name='p', category='Test cat', price='20000'),
-                dict(name='q', category='Test cat', price='40001')]
+    over_cap = [dict(name='p', trim='unspecified', category='Test cat', price='20000'),
+                dict(name='q', trim='unspecified', category='Test cat', price='40001')]
     assert build.price_problems(over_cap), \
         'a row priced over 2x its OTHER peers must be rejected even though ' \
         'it is also, trivially, the max of its own category'
