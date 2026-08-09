@@ -86,6 +86,7 @@ def main():
     assert not problems, 'price provenance incomplete:\n  ' + '\n  '.join(problems)
 
     check_price_resolution()
+    check_emitted_schema(real)
     check_recall_status_classification()
     check_readme_counts(real)
 
@@ -94,6 +95,25 @@ def main():
           f'balanced-six = {winner} at {score:.1f}, '
           f'{observed} observed / {len(real) - observed} placeholder '
           f'({len(models)} vehicles)')
+
+
+def check_emitted_schema(rows):
+    """Every field the JS engine reads must reach the page.
+
+    Python raises KeyError on a missing field. JS computes undefined * 2 = NaN
+    and renders a broken chart with no error, so absence has to be caught here.
+    """
+    models = build.build_models(rows, build.INPUTS)
+    for m in models:
+        missing = [f for f in build.REQUIRED_ENGINE_FIELDS if f not in m]
+        assert not missing, f'{m["name"]}: emitted row lacks {missing}'
+        assert isinstance(m['deprec5yr'], float), \
+            f'{m["name"]}: deprec5yr must be numeric, got {m["deprec5yr"]!r}'
+        assert m['tireClass'] in ('Truck', 'Crossover'), \
+            f'{m["name"]}: unexpected tireClass {m["tireClass"]!r}'
+        if m['observedPrice'] is not None:
+            assert m['observedAt'], \
+                f'{m["name"]}: observedPrice without observedAt anchor'
 
 
 def check_price_resolution():

@@ -21,6 +21,11 @@ ROOT = pathlib.Path(__file__).parent
 INPUTS = json.loads((ROOT / 'data' / 'inputs.json').read_text())
 MARKER = 'const MODELS = '
 
+# Fields engine.js reads. Absence is a NaN in the browser, not an exception,
+# so test_build.py asserts every one of these reaches the page.
+REQUIRED_ENGINE_FIELDS = ('price', 'mpg', 'fuel', 'deprec5yr', 'tireClass',
+                          'observedPrice', 'observedAt')
+
 
 def retention_index(odometer, anchors):
     """Linear interpolation over the odometer/median-price anchor table.
@@ -187,6 +192,10 @@ def build_models(rows, inp):
             'price': int(round(price)), 'priceBasis': basis,
             'priceYear': v.get('price_year') or '', 'mpg': num(v['mpg']), 'fuel': v['fuel'],
             'gvwr': v['gvwr_note'],
+            'deprec5yr': float(v['deprec_5yr']),
+            'tireClass': 'Truck' if v['tire_class'] == 'Truck' else 'Crossover',
+            'observedPrice': float(v['observed_price']) if v.get('observed_price') else None,
+            'observedAt': float(v['observed_price_odometer']) if v.get('observed_price_odometer') else None,
             'cpm': round(cpm, 3),
             'peryr': round(cpm * inp['annual_miles']),
             'cost': scale(cpm, lo, hi, invert=True),
