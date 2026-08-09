@@ -84,7 +84,7 @@ Do not edit `price`. Add `observed_price` alongside it:
 
 ## Adjusting the assumptions
 
-The eyebrow summary under the masthead is a button. Click it to open a panel where you can change eleven cost assumptions. The summary reads like `55,000 mi/yr · buy at 40k · sell at 180k · gas $3.55`, followed by a `change` prompt. When you edit any field, it appends ` · edited` in teal so you can see at a glance that something differs from the defaults.
+The eyebrow summary under the masthead is a button. Click it to open a panel where you can change eleven cost assumptions. The summary reads like `55,000 mi/yr · buy at 40k · sell at 180k · gas $3.55`, followed by a `change` prompt. When you edit any field, it appends `· edited` in teal so you can see at a glance that something differs from the defaults.
 
 The eleven fields are split into two groups, and the split is not cosmetic. The first eight can change which vehicle ranks highest, because each one multiplies against something that varies per vehicle: annual mileage and the two odometers interact with each vehicle's depreciation curve, fuel prices divide by its MPG, and the two tire prices and tire life depend on whether it wears truck or crossover tires.
 
