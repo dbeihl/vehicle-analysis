@@ -9,6 +9,7 @@ build.py recomputes them from the raw retention anchors. If the two ever
 disagree, one of them has drifted -- which is the whole reason this file exists.
 """
 import pathlib
+import re
 
 import build
 
@@ -140,14 +141,17 @@ def check_readme_counts(rows):
     no_study = sum(1 for r in rows if 'no study data' in (r['longevity_source'] or ''))
     assert f'{no_study} of the {len(rows)} vehicles have no published figure' in readme, \
         (f'README longevity count is stale: data says {no_study} of {len(rows)}')
-    # Substring matching keeps failing here. `str(4) in readme` matched
-    # "40,000"; "4 of the 79 rows..." is itself a substring of "14 of the 79
-    # rows...". Include the bold delimiters so the count is bounded on both
-    # sides and a wrong number cannot contain the right one.
+    # Substring matching bit twice here. `str(4) in readme` matched "40,000",
+    # and "4 of the 79 rows..." is a substring of "14 of the 79 rows...".
+    # The bold delimiters already bound it, but assert the digit boundaries
+    # explicitly rather than leaving correctness resting on a reader noticing
+    # the asterisks.
     observed = sum(1 for r in rows if r.get('observed_price'))
     claim = (f'**{observed} of the {len(rows)} rows carry an observed '
              f'price today.**')
-    assert claim in readme, f'README is stale: expected exactly "{claim}"'
+    pattern = (r'\*\*(?<!\d)' + str(observed) + r'(?!\d) of the (?<!\d)'
+               + str(len(rows)) + r'(?!\d) rows carry an observed price today\.\*\*')
+    assert re.search(pattern, readme), f'README is stale: expected "{claim}"'
 
 
 if __name__ == '__main__':
