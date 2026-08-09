@@ -19,6 +19,15 @@
            color:var(--ink2); line-height:1.5}
   h1{font-size:26px; font-weight:800; letter-spacing:-.025em; margin:6px 0 0; line-height:1.12}
   .masthead{border-bottom:2px solid var(--ink); padding-bottom:10px}
+  .summary{font:inherit; background:none; border:0; padding:0; cursor:pointer;
+           text-align:left; color:var(--ink2); text-decoration:underline;
+           text-decoration-color:var(--rule); text-underline-offset:3px}
+  .summary[data-dirty="true"]{color:var(--signal); font-weight:700}
+  .fields{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; padding:4px 13px 12px}
+  .fields label{display:block; font-size:11px; color:var(--ink2); margin-bottom:3px}
+  .fields input{width:100%; font-family:var(--mono); font-size:14px; padding:7px 8px;
+                border:1px solid var(--rule); background:var(--surface); color:var(--ink)}
+  .fields input[aria-invalid="true"]{border-color:var(--oxide); color:var(--oxide)}
   .lede{font-size:13.5px; color:var(--ink2); line-height:1.55; margin:12px 0 16px}
   .card{background:var(--surface); border:1px solid var(--rule); margin-bottom:14px}
   .cardhead{font-family:var(--mono); font-size:10px; letter-spacing:.13em; text-transform:uppercase;
@@ -77,8 +86,16 @@
 <div class="wrap">
 
   <div class="masthead">
-    <div class="eyebrow">55,000 mi/yr · buy at 40k · sell at 180k · Hamilton County, Indiana</div>
+    <button class="eyebrow summary" id="assumeToggle" aria-expanded="false" aria-controls="assumePanel"></button>
     <h1>Where the trade-offs stop trading</h1>
+  </div>
+
+  <div class="card" id="assumePanel" hidden>
+    <div class="cardhead"><span>Assumptions</span><button class="chip small" id="assumeReset">Reset</button></div>
+    <p class="fine" style="padding:0 13px 6px">These change what every number below says. The first group can change which vehicle wins; the second moves the cost without changing the order, because those figures are the same for every vehicle.</p>
+    <div class="fields" id="fieldsRank"></div>
+    <div class="cardhead"><span>Budget only</span></div>
+    <div class="fields" id="fieldsFlat"></div>
   </div>
 
   <p class="lede">
@@ -284,6 +301,60 @@ var KEYS=["cost","quality","longevity","efficiency","reliability","comfort"];
 
 var W=[25,15,15,10,20,15], FILT="all", PRESET="Balanced six", SEL=null;
 
+var DEFAULTS=JSON.parse(JSON.stringify(INPUTS));
+var FIELDS=[
+  {k:"annual_miles",       l:"Annual miles",        rank:true,  min:1000,  max:200000, step:1000},
+  {k:"buy_odometer",       l:"Buy odometer",        rank:true,  min:0,     max:250000, step:5000},
+  {k:"sell_odometer",      l:"Sell odometer",       rank:true,  min:1000,  max:400000, step:5000},
+  {k:"gas_per_gal",        l:"Gas $/gal",           rank:true,  min:1,     max:12,     step:0.05},
+  {k:"diesel_per_gal",     l:"Diesel $/gal",        rank:true,  min:1,     max:12,     step:0.05},
+  {k:"tire_set_crossover", l:"Tires, crossover $",  rank:true,  min:100,   max:5000,   step:50},
+  {k:"tire_set_truck",     l:"Tires, truck $",      rank:true,  min:100,   max:5000,   step:50},
+  {k:"tire_life_miles",    l:"Tire life, miles",    rank:true,  min:5000,  max:150000, step:5000},
+  {k:"scheduled_maint_per_mile", l:"Maintenance $/mi", rank:false, min:0,  max:1,      step:0.01},
+  {k:"insurance_per_year", l:"Insurance $/yr",      rank:false, min:0,     max:20000,  step:100},
+  {k:"registration_per_year", l:"Registration $/yr", rank:false, min:0,    max:5000,   step:25}
+];
+
+function fieldValid(f,n){
+  if(!isFinite(n)||n<f.min||n>f.max)return false;
+  /* A cycle must run forwards, or cycle miles go negative and every
+     per-mile figure inverts. */
+  if(f.k==="buy_odometer"&&n>=INPUTS.sell_odometer)return false;
+  if(f.k==="sell_odometer"&&n<=INPUTS.buy_odometer)return false;
+  return true;
+}
+function applyInput(f,el){
+  var n=parseFloat(el.value);
+  if(!fieldValid(f,n)){el.setAttribute("aria-invalid","true");return false}
+  el.removeAttribute("aria-invalid");
+  INPUTS[f.k]=n; return true;
+}
+function inputsChanged(){
+  for(var i=0;i<FIELDS.length;i++){var k=FIELDS[i].k; if(INPUTS[k]!==DEFAULTS[k])return true}
+  return false;
+}
+function summaryText(){
+  return Math.round(INPUTS.annual_miles).toLocaleString()+" mi/yr · buy at "
+    +Math.round(INPUTS.buy_odometer/1000)+"k · sell at "
+    +Math.round(INPUTS.sell_odometer/1000)+"k · gas $"+INPUTS.gas_per_gal.toFixed(2)
+    +(inputsChanged()?" · edited":"")+" — change";
+}
+function drawFields(){
+  ["Rank","Flat"].forEach(function(g){
+    document.getElementById("fields"+g).innerHTML=FIELDS.filter(function(f){
+      return f.rank===(g==="Rank")}).map(function(f){
+      return '<div><label for="f_'+f.k+'">'+esc(f.l)+'</label>'
+        +'<input id="f_'+f.k+'" type="number" inputmode="decimal" step="'+f.step
+        +'" min="'+f.min+'" max="'+f.max+'" value="'+INPUTS[f.k]+'"></div>'}).join("");
+  });
+  FIELDS.forEach(function(f){
+    document.getElementById("f_"+f.k).addEventListener("input",function(e){
+      if(applyInput(f,e.target))render();
+    });
+  });
+}
+
 function passes(m,k){
   if(k==="all")return true;
   if(k==="heavy")return !!m.heavy;
@@ -423,6 +494,9 @@ function render(){
   Array.prototype.forEach.call(document.querySelectorAll('#filters .chip'),function(b){
     b.setAttribute('aria-pressed',b.dataset.k===FILT);
   });
+  var tog=document.getElementById("assumeToggle");
+  tog.textContent=summaryText();
+  tog.setAttribute("data-dirty",inputsChanged()?"true":"false");
 }
 
 // build controls
@@ -458,6 +532,17 @@ document.getElementById('chart').addEventListener('click',function(e){
 document.getElementById('ranked').addEventListener('click',function(e){
   var b=e.target.closest('.rank'); if(!b)return; SEL=b.dataset.n; render();
 });
+document.getElementById("assumeToggle").addEventListener("click",function(){
+  var p=document.getElementById("assumePanel"), open=p.hidden;
+  p.hidden=!open; this.setAttribute("aria-expanded",open?"true":"false");
+});
+document.getElementById("assumeReset").addEventListener("click",function(){
+  FIELDS.forEach(function(f){INPUTS[f.k]=DEFAULTS[f.k];
+    var el=document.getElementById("f_"+f.k);
+    el.value=DEFAULTS[f.k]; el.removeAttribute("aria-invalid")});
+  render();
+});
+drawFields();
 
 render();
 </script>
