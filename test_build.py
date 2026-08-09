@@ -328,6 +328,71 @@ def check_price_resolution():
         'a row priced over 2x its OTHER peers must be rejected even though ' \
         'it is also, trivially, the max of its own category'
 
+    # category_ceiling must also exclude a row's SIBLINGS -- every other row
+    # sharing its nameplate -- not just the row itself. Three trims of one
+    # nameplate, all inflated to the same implausible price, plus a genuine
+    # same-category peer at a normal price as the anchor. Without the
+    # same-nameplate exclusion, the three siblings would be one another's
+    # peers and each other's ceiling: an inflated price becomes a candidate
+    # for the very max it is compared against, so none of them could ever
+    # exceed CATEGORY_HEADROOM times a sibling inflated by the same amount.
+    # That is exactly the failure mode this check exists to catch --
+    # sourcing all of a nameplate's trims from one bad page. The anchor is
+    # what makes rejection possible at all: it sets a real ceiling the
+    # siblings cannot reach together once they can no longer vouch for each
+    # other.
+    sibling_price = '60585'  # the CAD CR-V Hybrid figure that motivated this gate
+    siblings_inflated = [
+        dict(name='Sib', trim='base', trim_name='LX', category='Test cat',
+             price=sibling_price),
+        dict(name='Sib', trim='volume', trim_name='EX', category='Test cat',
+             price=sibling_price),
+        dict(name='Sib', trim='loaded', trim_name='EX-L', category='Test cat',
+             price=sibling_price),
+        dict(name='Anchor', trim='unspecified', category='Test cat', price='25000'),
+    ]
+    sibling_problems = build.price_problems(siblings_inflated)
+    assert sum(1 for p in sibling_problems if p.startswith('Sib:')) == 3, \
+        ('all three inflated sibling trims must be rejected once a genuine '
+         f'peer sets a real ceiling; got: {sibling_problems}')
+    assert not any(p.startswith('Anchor:') for p in sibling_problems), \
+        f'the genuine peer itself must not be flagged; got: {sibling_problems}'
+
+    # Two DIFFERENT nameplates, both inflated in the same category at the
+    # same time, are a gap this check does NOT close -- documented as an
+    # expected pass, not a silent omission. Each nameplate is excluded only
+    # from its OWN peer set, so two distinct nameplates remain each other's
+    # peers and can still mask one another, same as the pre-fix behavior for
+    # this specific case. See category_ceiling's docstring.
+    two_plates_inflated = [
+        dict(name='CR-V Hybrid', trim='unspecified', category='Test cat', price='60585'),
+        dict(name='RAV4 Hybrid', trim='unspecified', category='Test cat', price='61000'),
+    ]
+    assert not build.price_problems(two_plates_inflated), \
+        ('two different nameplates both inflated in the same category are a '
+         'known, undocumented-as-closed gap -- this must still pass, and a '
+         'failure here means the gap silently closed or someone narrowed '
+         "the exclusion in a way that changes this contract without "
+         "updating category_ceiling's docstring")
+
+    # A malformed price on one row must not raise while category_ceiling
+    # computes a DIFFERENT row's ceiling. Peers are parsed before their own
+    # per-row validation has necessarily run (price_problems iterates rows in
+    # order), so a bad peer has to be skipped rather than crash the row
+    # actually under test.
+    malformed_peer = [
+        dict(name='Malformed', trim='unspecified', category='Test cat', price='abc'),
+        dict(name='Valid', trim='unspecified', category='Test cat', price='22000'),
+    ]
+    malformed_problems = build.price_problems(malformed_peer)
+    assert any(p.startswith('Malformed:') and 'not a number' in p
+              for p in malformed_problems), \
+        f'a malformed price must be reported on its own row; got: {malformed_problems}'
+    assert not any(p.startswith('Valid:') for p in malformed_problems), \
+        ("a malformed peer's price must not raise while validating a "
+         f'different row, nor produce a problem attributed to that other '
+         f'row; got: {malformed_problems}')
+
 
 def check_recall_status_classification():
     """Pin the three outcomes fetch() must keep apart.
