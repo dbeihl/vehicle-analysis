@@ -310,7 +310,11 @@ var DEFAULTS=JSON.parse(JSON.stringify(INPUTS));
 var FIELDS=[
   {k:"annual_miles",       l:"Annual miles",        rank:true,  min:1000,  max:200000, step:1000},
   {k:"buy_odometer",       l:"Buy odometer",        rank:true,  min:0,     max:250000, step:5000},
-  {k:"sell_odometer",      l:"Sell odometer",       rank:true,  min:1000,  max:400000, step:5000},
+  /* max is the retention curve's last anchor (see retention_anchors in
+     data/inputs.json). retentionIndex clamps flat past it, so a sell
+     odometer beyond 250000 would price resale off a flat line the curve
+     never actually measured. */
+  {k:"sell_odometer",      l:"Sell odometer",       rank:true,  min:1000,  max:250000, step:5000},
   {k:"gas_per_gal",        l:"Gas $/gal",           rank:true,  min:1,     max:12,     step:0.05},
   {k:"diesel_per_gal",     l:"Diesel $/gal",        rank:true,  min:1,     max:12,     step:0.05},
   {k:"tire_set_crossover", l:"Tires, crossover $",  rank:true,  min:100,   max:5000,   step:50},
@@ -321,19 +325,45 @@ var FIELDS=[
   {k:"registration_per_year", l:"Registration $/yr", rank:false, min:0,    max:5000,   step:25}
 ];
 
+function fieldByKey(k){
+  for(var i=0;i<FIELDS.length;i++){if(FIELDS[i].k===k)return FIELDS[i]}
+  return null;
+}
+function fieldInRange(f,n){
+  return isFinite(n)&&n>=f.min&&n<=f.max;
+}
 function fieldValid(f,n){
-  if(!isFinite(n)||n<f.min||n>f.max)return false;
+  if(!fieldInRange(f,n))return false;
   /* A cycle must run forwards, or cycle miles go negative and every
      per-mile figure inverts. */
   if(f.k==="buy_odometer"&&n>=INPUTS.sell_odometer)return false;
   if(f.k==="sell_odometer"&&n<=INPUTS.buy_odometer)return false;
   return true;
 }
+var ODO_COUNTERPART={buy_odometer:"sell_odometer", sell_odometer:"buy_odometer"};
+function revalidateCounterpart(f){
+  /* Accepting a buy/sell edit can flip the OTHER field's validity without
+     that field's own input event ever firing. Leaving its old aria-invalid
+     state in place would let the panel show a value in black (or red) that
+     does not match what INPUTS -- and therefore the engine -- is using. */
+  var ck=ODO_COUNTERPART[f.k]; if(!ck)return;
+  var cf=fieldByKey(ck), cel=document.getElementById("f_"+ck);
+  if(!cf||!cel)return;
+  var n=parseFloat(cel.value);
+  if(fieldValid(cf,n)){
+    cel.removeAttribute("aria-invalid");
+    INPUTS[ck]=n;
+  }else{
+    cel.setAttribute("aria-invalid","true");
+  }
+}
 function applyInput(f,el){
   var n=parseFloat(el.value);
   if(!fieldValid(f,n)){el.setAttribute("aria-invalid","true");return false}
   el.removeAttribute("aria-invalid");
-  INPUTS[f.k]=n; return true;
+  INPUTS[f.k]=n;
+  revalidateCounterpart(f);
+  return true;
 }
 function inputsChanged(){
   for(var i=0;i<FIELDS.length;i++){var k=FIELDS[i].k; if(INPUTS[k]!==DEFAULTS[k])return true}
@@ -368,22 +398,49 @@ function writeHash(){
   var h=p.join("&");
   history.replaceState(null,"",h?"#"+h:location.pathname);
 }
+function stagedFieldsValid(staged){
+  /* The odometer pair is checked against each other within the staged set,
+     never against live INPUTS -- INPUTS is still sitting at defaults while
+     this runs, so checking against it would just be checking against
+     defaults under a different name, and would not catch two staged values
+     that are individually in range but mutually incoherent. A key absent
+     from the fragment falls back to its default for this comparison only;
+     it is never written to INPUTS unless it was actually staged. */
+  for(var k in staged){
+    if(!staged.hasOwnProperty(k))continue;
+    var f=fieldByKey(k);
+    if(!f||!fieldInRange(f,staged[k]))return false;
+  }
+  var buy=staged.hasOwnProperty("buy_odometer")?staged.buy_odometer:DEFAULTS.buy_odometer;
+  var sell=staged.hasOwnProperty("sell_odometer")?staged.sell_odometer:DEFAULTS.sell_odometer;
+  return buy<sell;
+}
 function readHash(){
   /* A malformed or stale link must land on the defaults rather than a
-     half-applied state. Anything unrecognised is dropped silently. */
+     half-applied state. Anything unrecognised is dropped silently.
+
+     Input fields are staged into a plain object first and validated as one
+     set -- see stagedFieldsValid -- then applied to INPUTS only if the
+     whole set is coherent; a fragment with one bad field applies none of
+     them. w, f and v stay independent: each validates against a fixed,
+     known set of values that does not depend on the others, so applying
+     them one at a time cannot produce a half-applied state. */
   var h=location.hash.replace(/^#/,""); if(!h)return;
+  var staged={};
   h.split("&").forEach(function(kv){
     var i=kv.indexOf("="); if(i<0)return;
-    var k=kv.slice(0,i), v=decodeURIComponent(kv.slice(i+1));
+    var k=kv.slice(0,i), raw=kv.slice(i+1), v;
+    try{ v=decodeURIComponent(raw) }catch(e){ return }
     if(k==="w"){var a=v.split(",").map(Number);
       if(a.length===6&&a.every(function(n){return isFinite(n)&&n>=0&&n<=100})){W=a;PRESET="Custom"}
       return}
     if(k==="f"){if(FILTERS.some(function(x){return x.k===v}))FILT=v; return}
     if(k==="v"){if(MODELS.some(function(m){return m.name===v}))SEL=v; return}
-    for(var j=0;j<FIELDS.length;j++){
-      if(FIELDS[j].k===k){var n=parseFloat(v); if(fieldValid(FIELDS[j],n))INPUTS[k]=n; return}
-    }
+    if(fieldByKey(k))staged[k]=parseFloat(v);
   });
+  if(stagedFieldsValid(staged)){
+    for(var k in staged){if(staged.hasOwnProperty(k))INPUTS[k]=staged[k]}
+  }
 }
 
 function passes(m,k){
