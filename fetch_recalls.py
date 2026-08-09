@@ -65,6 +65,25 @@ def fetch(make, model, year, attempts=3):
     return None, 'failed'
 
 
+def carry_forward(entry, failed_years):
+    """Reuse a previous entry, normalised to the current schema and marked stale.
+
+    Preserving a raw previous entry leaves two shapes in one file, so a consumer
+    reading years_offered gets None for exactly the rows that are least
+    trustworthy. Normalise the key, and say plainly that the row was not
+    refreshed rather than letting it pass as current.
+    """
+    entry = dict(entry)
+    if 'years_sampled' in entry:                    # pre-2026-08 schema
+        entry['years_offered'] = entry.pop('years_sampled')
+    entry.setdefault('years_offered', len(entry.get('by_year') or {}))
+    entry.setdefault('years_requested', len(YEARS))
+    entry['stale'] = True
+    entry['comparable'] = False
+    entry['failed_years'] = sorted(failed_years)
+    return entry
+
+
 def main():
     names = [r['name'] for r in csv.DictReader(open(ROOT / 'data' / 'vehicles.csv'))]
     cache_path = ROOT / 'data' / 'recalls.json'
@@ -96,7 +115,7 @@ def main():
         # publishing the short one understates that nameplate against its peers.
         if failed:
             if name in previous:
-                out[name] = previous[name]
+                out[name] = carry_forward(previous[name], failed)
                 kept.append(name)
             else:
                 dropped.append(name)
@@ -115,6 +134,11 @@ def main():
             'powertrain_years': sorted(powertrain),
             'years_offered': offered,
             'years_requested': len(YEARS),
+            # per_year is an average over years_offered, which is not always
+            # years_requested -- a nameplate sold in one sampled year gets a
+            # one-year average. Ranking nameplates on per_year without checking
+            # this compares different denominators. 28 of 71 are below full.
+            'comparable': offered == len(YEARS),
         }
         print(f'{name:<40} {out[name]["per_year"]:>6} campaigns/yr'
               f'  ({offered}/{len(YEARS)} yr)'
