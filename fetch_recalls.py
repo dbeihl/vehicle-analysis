@@ -145,6 +145,11 @@ def main():
             # per_year averages over years_answered, not years_requested.
             # Ranking nameplates on it without checking compares different
             # denominators.
+            # NHTSA treats "Escape Hybrid" and "Escape" as different models and
+            # returns wildly different counts -- 1 against 19 for 2021 -- and not
+            # as a subset, since CR-V Hybrid exceeds CR-V for 2023. Querying a
+            # variant name therefore under- or over-states the nameplate. See #16.
+            'variant_query': model != model.split(' Hybrid')[0].split(' (')[0],
             'comparable': answered == len(YEARS),
         }
         print(f'{name:<40} {out[name]["per_year"]:>6} campaigns/yr'

@@ -11,6 +11,7 @@
     "powertrain_years": [
       2021
     ],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -30,6 +31,7 @@
     "powertrain_years": [
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -44,6 +46,7 @@
     "model": "Colorado",
     "per_year": 2.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -63,6 +66,7 @@
     "powertrain_years": [
       2019
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -81,6 +85,7 @@
       2019,
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -99,6 +104,7 @@
       2019,
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -117,6 +123,7 @@
       2019,
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -136,6 +143,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -154,6 +162,7 @@
       2019,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -172,6 +181,7 @@
       2019,
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -185,6 +195,7 @@
     "model": "Escape Hybrid",
     "per_year": 1.0,
     "powertrain_years": [],
+    "variant_query": true,
     "years_answered": 1,
     "years_no_data": [
       2019,
@@ -207,6 +218,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -225,6 +237,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -243,6 +256,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -258,6 +272,7 @@
     "powertrain_years": [
       2019
     ],
+    "variant_query": false,
     "years_answered": 1,
     "years_no_data": [
       2021,
@@ -276,6 +291,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": false,
     "years_answered": 1,
     "years_no_data": [
       2019,
@@ -294,6 +310,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": true,
     "years_answered": 1,
     "years_no_data": [
       2019,
@@ -314,6 +331,7 @@
     "powertrain_years": [
       2019
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -332,6 +350,7 @@
       2019,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -346,6 +365,7 @@
     "model": "Canyon",
     "per_year": 2.5,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -366,6 +386,7 @@
       2019,
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -384,6 +405,7 @@
       2019,
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -402,6 +424,7 @@
       2019,
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -417,6 +440,7 @@
     "model": "CR-V",
     "per_year": 5.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -433,6 +457,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": true,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -450,6 +475,7 @@
     "model": "HR-V",
     "per_year": 4.67,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -465,6 +491,7 @@
     "model": "Passport",
     "per_year": 7.33,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -480,6 +507,7 @@
     "model": "Pilot",
     "per_year": 9.33,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -495,6 +523,7 @@
     "model": "Ridgeline",
     "per_year": 8.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -511,6 +540,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -530,6 +560,7 @@
     "powertrain_years": [
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -544,6 +575,7 @@
     "model": "Santa Fe Hybrid",
     "per_year": 2.0,
     "powertrain_years": [],
+    "variant_query": true,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -563,6 +595,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -582,6 +615,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -596,6 +630,7 @@
     "model": "Compass",
     "per_year": 2.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2021
@@ -615,6 +650,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -635,6 +671,7 @@
       2019,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -649,6 +686,7 @@
     "model": "Grand Cherokee L",
     "per_year": 4.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -664,6 +702,7 @@
     "model": "Grand Wagoneer",
     "per_year": 7.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 1,
     "years_no_data": [
       2019,
@@ -686,6 +725,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -700,6 +740,7 @@
     "model": "Wrangler 4xe",
     "per_year": 2.5,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -719,6 +760,7 @@
     "powertrain_years": [
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -733,6 +775,7 @@
     "model": "Sorento Hybrid",
     "per_year": 2.0,
     "powertrain_years": [],
+    "variant_query": true,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -752,6 +795,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -769,6 +813,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -784,6 +829,7 @@
     "model": "NX Hybrid",
     "per_year": 2.0,
     "powertrain_years": [],
+    "variant_query": true,
     "years_answered": 1,
     "years_no_data": [
       2019,
@@ -801,6 +847,7 @@
     "model": "RX Hybrid",
     "per_year": 1.5,
     "powertrain_years": [],
+    "variant_query": true,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -822,6 +869,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -835,6 +883,7 @@
     "model": "CX-5",
     "per_year": 2.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 1,
     "years_no_data": [
       2021,
@@ -852,6 +901,7 @@
     "model": "CX-9",
     "per_year": 1.5,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2023
@@ -869,6 +919,7 @@
     "model": "Armada",
     "per_year": 1.33,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -886,6 +937,7 @@
     "powertrain_years": [
       2021
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -900,6 +952,7 @@
     "model": "Pathfinder",
     "per_year": 1.5,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2021
@@ -917,6 +970,7 @@
     "model": "Rogue",
     "per_year": 6.33,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -935,6 +989,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -954,6 +1009,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -973,6 +1029,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -991,6 +1048,7 @@
       2019,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -1007,6 +1065,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2021
@@ -1027,6 +1086,7 @@
       2021,
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -1042,6 +1102,7 @@
     "model": "4Runner",
     "per_year": 2.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -1057,6 +1118,7 @@
     "model": "Highlander",
     "per_year": 5.33,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -1071,6 +1133,7 @@
     "model": "Highlander Hybrid",
     "per_year": 5.0,
     "powertrain_years": [],
+    "variant_query": true,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -1088,6 +1151,7 @@
     "model": "RAV4",
     "per_year": 3.67,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -1098,11 +1162,12 @@
       "2021": 1,
       "2023": 1
     },
-    "comparable": true,
+    "comparable": false,
     "make": "Toyota",
     "model": "RAV4 Hybrid",
     "per_year": 1.67,
     "powertrain_years": [],
+    "variant_query": true,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -1117,6 +1182,7 @@
     "model": "Sequoia",
     "per_year": 4.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2023
@@ -1133,6 +1199,7 @@
     "model": "Sienna Hybrid",
     "per_year": 1.5,
     "powertrain_years": [],
+    "variant_query": true,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -1151,6 +1218,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2021
@@ -1170,6 +1238,7 @@
     "powertrain_years": [
       2023
     ],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
@@ -1184,6 +1253,7 @@
     "model": "Venza",
     "per_year": 1.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 2,
     "years_no_data": [
       2019
@@ -1201,6 +1271,7 @@
     "model": "Atlas",
     "per_year": 11.0,
     "powertrain_years": [],
+    "variant_query": false,
     "years_answered": 3,
     "years_no_data": [],
     "years_requested": 3
