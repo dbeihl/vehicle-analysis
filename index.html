@@ -55,6 +55,11 @@
   .meta{font-family:var(--mono); font-size:11px; color:var(--ink2); margin-bottom:6px; line-height:1.45}
   .prov{font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase;
         color:var(--ink3); font-weight:400; margin-left:4px}
+  .prov{font-family:var(--mono); font-size:9px; letter-spacing:.08em;
+        text-transform:uppercase; margin-left:6px; padding:2px 5px}
+  .prov-observed{background:var(--signalSoft); color:var(--signal)}
+  .prov-derived{background:#EFE3CC; color:var(--amber)}
+  .prov-placeholder{background:var(--ruleSoft); color:var(--ink3)}
   .bars{margin:0 0 10px}
   .barrow{display:flex; align-items:center; gap:8px; margin-bottom:5px}
   .bk{font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase;
@@ -374,6 +379,9 @@ function compute(){
     m.cpm=raw[i];
     m.peryr=raw[i]*INPUTS.annual_miles;
     m.cost=hi===lo?100:100*(hi-raw[i])/(hi-lo);
+    var bp=VA.buyPrice(m,INPUTS);
+    m.priceBasis=bp.basis;
+    m.price=bp.price;
   });
   var bad=MODELS.filter(function(m){return !isFinite(m.cpm)});
   if(bad.length){
@@ -453,7 +461,10 @@ function drawDetail(st){
   if(m.name===win.name)h+='<span class="badge" style="background:var(--ink);color:var(--surface)">TOP PICK</span>';
   h+='</div><div class="grid4">'+
     kv('Cost/mile','$'+m.cpm.toFixed(3))+kv('Per year','$'+Math.round(m.peryr).toLocaleString())+
-    kv('Buy price','$'+m.price.toLocaleString())+kv('Highway MPG',m.mpg.toFixed(1))+'</div>'+
+    kv('Buy price','$'+Math.round(m.price).toLocaleString()+
+      '<span class="prov prov-'+m.priceBasis+'">'+
+      (m.priceBasis==='observed'?'listed':m.priceBasis==='derived'?'scaled':'estimate')+
+      '</span>')+kv('Highway MPG',m.mpg.toFixed(1))+'</div>'+
     '<div class="bars">'+
       bar('Quality',m.quality)+bar('Longevity',m.longevity)+
       bar('Reliability',m.reliability)+bar('Comfort',m.comfort)+'</div>'+
