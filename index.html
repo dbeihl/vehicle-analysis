@@ -593,13 +593,31 @@ function drawChart(st){
     /* Individual trim points need their own identifier -- data-key -- since
        several share this nameplate's data-n. Clicking any of them still
        sets SEL to the bare nameplate (data-n), so the v= link keeps
-       carrying a nameplate, not a trim. */
-    sel.trims.forEach(function(t){
-      var isRep=t.key===sel.key;
-      if(isRep)s+='<circle cx="'+px(t.cost)+'" cy="'+py(t.value)+'" r="10.5" fill="none" stroke="#0E6B5C" stroke-width="1.2" opacity=".6"/>';
-      s+='<circle cx="'+px(t.cost)+'" cy="'+py(t.value)+'" r="5" fill="'+tierHex(t.tier)+'"'+(isRep?' stroke="#171F2A" stroke-width="1.6"':'')+'><title>'+esc(t.trimName||t.name)+'</title></circle>';
-      s+='<text x="'+(px(t.cost)+7)+'" y="'+(py(t.value)-6)+'" font-family="var(--mono)" font-size="9" fill="var(--ink2)">'+esc(t.trimName||t.name)+'</text>';
-      s+='<circle class="hit" data-n="'+esc(t.name)+'" data-key="'+esc(t.key)+'" cx="'+px(t.cost)+'" cy="'+py(t.value)+'" r="13" fill="transparent"/>';
+       carrying a nameplate, not a trim.
+
+       Trims of one nameplate differ mostly in price, so they cluster at
+       nearly the same value (y) and close cost (x) -- a label drawn right
+       on each dot overlaps its neighbors into an unreadable smear. Instead
+       every label is stacked in a vertical column beside the cluster and
+       tied back to its point with a thin leader line, so N labels never
+       collide no matter how tight the cluster is. */
+    var pts=sel.trims.map(function(t){return {t:t,x:px(t.cost),y:py(t.value)}});
+    pts.sort(function(a,b){return a.x-b.x});
+    var cx=0,cy=0,pi;
+    for(pi=0;pi<pts.length;pi++){cx+=pts[pi].x; cy+=pts[pi].y}
+    cx/=pts.length; cy/=pts.length;
+    var rowH=12, stackH=(pts.length-1)*rowH;
+    var roomBelow=(VH-PAD.b)-cy, roomAbove=cy-PAD.t;
+    var top=roomBelow>=roomAbove?cy+16:cy-16-stackH;
+    top=Math.max(PAD.t+8,Math.min(VH-PAD.b-8-stackH,top));
+    var lx=Math.max(PAD.l+34,Math.min(VW-PAD.r-34,cx));
+    pts.forEach(function(p,pi){
+      var t=p.t, ly=top+pi*rowH, isRep=t.key===sel.key, label=t.trimName||t.name;
+      s+='<line x1="'+p.x+'" y1="'+p.y+'" x2="'+lx+'" y2="'+ly+'" stroke="var(--ink3)" stroke-width="1"/>';
+      if(isRep)s+='<circle cx="'+p.x+'" cy="'+p.y+'" r="10.5" fill="none" stroke="#0E6B5C" stroke-width="1.2" opacity=".6"/>';
+      s+='<circle cx="'+p.x+'" cy="'+p.y+'" r="5" fill="'+tierHex(t.tier)+'"'+(isRep?' stroke="#171F2A" stroke-width="1.6"':'')+'><title>'+esc(label)+'</title></circle>';
+      s+='<text x="'+lx+'" y="'+(ly+3)+'" font-family="var(--mono)" font-size="9" fill="var(--ink2)" text-anchor="middle">'+esc(label)+'</text>';
+      s+='<circle class="hit" data-n="'+esc(t.name)+'" data-key="'+esc(t.key)+'" cx="'+p.x+'" cy="'+p.y+'" r="13" fill="transparent"/>';
     });
   }
   s+='<text x="'+px(50)+'" y="'+(VH-8)+'" font-family="var(--mono)" font-size="9.5" letter-spacing="1.3" fill="var(--ink2)" text-anchor="middle">CHEAPER PER MILE →</text>';
