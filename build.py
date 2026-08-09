@@ -60,7 +60,9 @@ def price_problems(rows):
                 problems.append(f'{name}: observed_price without price_year')
             if not v.get('price_source'):
                 problems.append(f'{name}: observed_price without price_source')
-            if not v.get('observed_price_odometer'):
+            # Explicit empty check, not truthiness: an anchor of 0 miles means
+            # the price was observed new, which is a real and usable datum.
+            if str(v.get('observed_price_odometer', '')).strip() == '':
                 problems.append(f'{name}: observed_price without '
                                 f'observed_price_odometer -- the mileage a price '
                                 f'was measured at is what lets the buy point move')
