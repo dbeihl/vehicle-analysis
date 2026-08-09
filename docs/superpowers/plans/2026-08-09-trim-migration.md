@@ -77,6 +77,20 @@ PRICE_BOUNDS = (5000, 250000)
 CATEGORY_HEADROOM = 2.0
 ```
 
+And the helper it uses, alongside the other module-level functions:
+
+```python
+def category_ceiling(rows, category):
+    """Highest placeholder price in a category, or None if it is the only row.
+
+    Used only as a sanity ceiling. Reads `price` rather than the resolved buy
+    price so the bound does not move as observed prices are added.
+    """
+    peers = [float(r['price']) for r in rows
+             if r.get('category') == category and str(r.get('price', '')).strip()]
+    return max(peers) if len(peers) > 1 else None
+```
+
 In `price_problems`, inside the loop, after the provenance checks:
 
 ```python
@@ -237,17 +251,6 @@ Expected: FAIL with `AttributeError: module 'build' has no attribute 'row_key'`
 In `build.py`, after `PRICE_BOUNDS`:
 
 ```python
-def category_ceiling(rows, category):
-    """Highest placeholder price in a category, or None if it is the only row.
-
-    Used only as a sanity ceiling. Reads `price` rather than the resolved buy
-    price so the bound does not move as observed prices are added.
-    """
-    peers = [float(r['price']) for r in rows
-             if r.get('category') == category and str(r.get('price', '')).strip()]
-    return max(peers) if len(peers) > 1 else None
-
-
 def row_key(v):
     """Stable identity for a row: nameplate plus trim.
 
