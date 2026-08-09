@@ -62,7 +62,7 @@ Do not edit `price`. Add `observed_price` alongside it:
 
 | Column | Meaning |
 | ------ | ------- |
-| `observed_price` | Average of real listings for that model year. Preferred over everything |
+| `observed_price` | A sourced market price for that model year. Preferred over everything. The aggregation varies and `price_source` records it: the Highlander Hybrid is an average across 879 listings, the Escalade a median across three services that disagreed by $5,000 |
 | `price_year` | The model year being priced. The 40,000-mile buy point is a roughly 3-year-old vehicle, so in 2026 that is a 2023 |
 | `price_source` | Which listing services, and how many listings |
 | `price` | The original placeholder: no year, no trim, no source. Kept because `test_build.py` needs it to check the engine against the workbook |
@@ -72,7 +72,7 @@ Do not edit `price`. Add `observed_price` alongside it:
 
 `build.py` refuses to run if a price carries an incomplete provenance record. An unflagged placeholder reads exactly like a verified figure once it reaches the page.
 
-**Four of seventy-nine rows are on observed prices today.** Until that number is much higher, the ranking is biased toward whatever is still on a placeholder. A partially corrected dataset is more misleading than a uniformly wrong one: uniform error largely cancels in a ranking, and partial correction does not.
+**4 of the 79 rows carry an observed price today.** Until that number is much higher, the ranking is biased toward whatever is still on a placeholder. A partially corrected dataset is more misleading than a uniformly wrong one: uniform error largely cancels in a ranking, and partial correction does not.
 
 ## The six axes are not equally trustworthy
 

@@ -124,6 +124,9 @@ def check_price_resolution():
         dict(name='d', price_source='x'),                               # orphaned source
         dict(name='e', msrp='1', msrp_year='2026', msrp_source='x'),    # no trim
         dict(name='f', msrp='1', msrp_trim='XLE', msrp_source='x'),     # no year
+        dict(name='g', msrp_year='2026'),                               # orphaned msrp_year
+        dict(name='h', msrp_trim='XLE'),                                # orphaned msrp_trim
+        dict(name='i', msrp_source='KBB'),                              # orphaned msrp_source
     ]
     for row in rejected:
         assert build.price_problems([row]), f'gate accepted a bad row: {row}'
@@ -137,8 +140,11 @@ def check_readme_counts(rows):
     no_study = sum(1 for r in rows if 'no study data' in (r['longevity_source'] or ''))
     assert f'{no_study} of the {len(rows)} vehicles have no published figure' in readme, \
         (f'README longevity count is stale: data says {no_study} of {len(rows)}')
+    # A bare `str(count) in readme` is not a check: "4" matches "40,000" and
+    # "$48,815". Assert the whole sentence, so the number cannot drift silently.
     observed = sum(1 for r in rows if r.get('observed_price'))
-    assert str(observed) in readme, f'README does not mention the {observed} observed rows'
+    claim = (f'{observed} of the {len(rows)} rows carry an observed price')
+    assert claim in readme, f'README is stale: expected the sentence "{claim}"'
 
 
 if __name__ == '__main__':

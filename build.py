@@ -101,6 +101,12 @@ def price_problems(rows):
                                 f'unstated, and trims span $7,655 on one nameplate')
             if not v.get('msrp_source'):
                 problems.append(f'{name}: msrp without msrp_source')
+        else:
+            # Same rule as above, applied to the reference columns. Metadata
+            # describing a figure that is not there is provenance for nothing.
+            for orphan in ('msrp_year', 'msrp_trim', 'msrp_source'):
+                if v.get(orphan):
+                    problems.append(f'{name}: {orphan} set without an msrp')
     return problems
 
 
