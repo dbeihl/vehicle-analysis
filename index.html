@@ -424,21 +424,47 @@ function readHash(){
      whole set is coherent; a fragment with one bad field applies none of
      them. w, f and v stay independent: each validates against a fixed,
      known set of values that does not depend on the others, so applying
-     them one at a time cannot produce a half-applied state. */
+     them one at a time cannot produce a half-applied state.
+
+     fieldsOk is the all-or-nothing gate for the assumption fields alone.
+     It starts true and is only ever set false, never back to true, so one
+     bad pair poisons the whole staged set even if a later duplicate of the
+     same key looks fine. Two things can trip it: a pair whose key names one
+     of the eleven FIELDS but whose value fails to decode, and a decoded
+     value that is not a complete, well-formed number (see the Number(v)
+     comment below). Whether a key names a field is knowable from k alone --
+     k is never percent-decoded in this fragment format, only the value half
+     is -- so that check runs before the decode attempt and works the same
+     whether decoding succeeds or throws. w, f and v are looked up by their
+     own literal (undecoded) key too, so a decode failure on one of those
+     pairs still just drops that pair via the catch's plain `return`,
+     independent of fieldsOk. */
   var h=location.hash.replace(/^#/,""); if(!h)return;
   var staged={};
+  var fieldsOk=true;
   h.split("&").forEach(function(kv){
     var i=kv.indexOf("="); if(i<0)return;
-    var k=kv.slice(0,i), raw=kv.slice(i+1), v;
-    try{ v=decodeURIComponent(raw) }catch(e){ return }
+    var k=kv.slice(0,i), raw=kv.slice(i+1), v, f=fieldByKey(k);
+    try{ v=decodeURIComponent(raw) }catch(e){ if(f)fieldsOk=false; return }
     if(k==="w"){var a=v.split(",").map(Number);
       if(a.length===6&&a.every(function(n){return isFinite(n)&&n>=0&&n<=100})){W=a;PRESET="Custom"}
       return}
     if(k==="f"){if(FILTERS.some(function(x){return x.k===v}))FILT=v; return}
     if(k==="v"){if(MODELS.some(function(m){return m.name===v}))SEL=v; return}
-    if(fieldByKey(k))staged[k]=parseFloat(v);
+    if(f){
+      /* Number() requires the ENTIRE string to be a numeric literal, unlike
+         parseFloat which accepts a numeric prefix and silently ignores
+         trailing junk (parseFloat("55000oops")===55000). Number() also
+         coerces "" and whitespace-only strings to 0, so those are rejected
+         explicitly first -- an omitted value is not the same as zero.
+         Number() happily accepts the exponential notation writeHash can
+         itself emit for a very small in-range value (e.g. "1e-7"), so
+         legitimate links this page produces still round-trip. */
+      if(v===""||/^\s*$/.test(v)){fieldsOk=false}
+      else{var n=Number(v); if(!isFinite(n)){fieldsOk=false}else{staged[k]=n}}
+    }
   });
-  if(stagedFieldsValid(staged)){
+  if(fieldsOk&&stagedFieldsValid(staged)){
     for(var k in staged){if(staged.hasOwnProperty(k))INPUTS[k]=staged[k]}
   }
 }
