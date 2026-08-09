@@ -144,6 +144,7 @@ def check_recall_status_classification():
     recalls for years the CX-5 was plainly on sale.
     """
     import io
+    import sys
     import urllib.error
     import fetch_recalls
 
@@ -169,7 +170,13 @@ def check_recall_status_classification():
 
         calls.clear()
         fetch_recalls.urllib.request.urlopen = fake(503)
-        assert fetch_recalls.fetch('m', 'x', 2021, attempts=2) == (None, 'failed')
+        # fetch() reports giving up on stderr; silence it so a passing suite
+        # does not print something that reads like a failure in CI.
+        stderr, sys.stderr = sys.stderr, io.StringIO()
+        try:
+            assert fetch_recalls.fetch('m', 'x', 2021, attempts=2) == (None, 'failed')
+        finally:
+            sys.stderr = stderr
         assert len(calls) == 2, f'5xx must retry, saw {len(calls)} attempt(s)'
     finally:
         fetch_recalls.urllib.request.urlopen = real
