@@ -231,7 +231,7 @@ def render(html, models, inputs, engine_src):
     end = html.index('];', marker) + 2
     payload = json.dumps(models, separators=(',', ':'), ensure_ascii=False)
     block = (engine_src.rstrip() + '\n'
-             + 'const INPUTS = ' + json.dumps(inputs, separators=(',', ':')) + ';\n'
+             + 'var INPUTS = ' + json.dumps(inputs, separators=(',', ':')) + ';\n'
              + MARKER + payload + ';')
     return html[:start] + block + html[end:]
 
