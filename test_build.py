@@ -72,12 +72,13 @@ def check_js_engine_parity(rows):
     A missing Node must fail rather than skip. A skipped check reads exactly
     like a passing one.
 
-    Dumps two model arrays, not one. build_models() resolves buy_price into
-    the emitted 'price' field, so a vehicle with an observed price loses its
-    raw placeholder there -- nulling observedPrice on that dict client-side
-    cannot recover it. The workbook_oracle variant needs rows stripped of
-    observed_price *before* build_models runs, same as main()'s workbook
-    comparison, so its 'price' field is the true placeholder.
+    Dumps two model arrays, not one, via build.dump_variants(). build_models()
+    resolves buy_price into the emitted 'price' field, so a vehicle with an
+    observed price loses its raw placeholder there -- nulling observedPrice
+    on that dict client-side cannot recover it. The workbook_oracle variant
+    needs rows stripped of observed_price *before* build_models runs, same as
+    main()'s workbook comparison, so its 'price' field is the true
+    placeholder.
     """
     import json
     import shutil
@@ -88,11 +89,18 @@ def check_js_engine_parity(rows):
                   'It is a development dependency only; the page ships without it.')
 
     root = pathlib.Path(__file__).parent
-    stripped = [dict(r, msrp='', observed_price='') for r in rows]
-    dumped = {
-        'full': build.build_models(rows, build.INPUTS),
-        'workbook_oracle': build.build_models(stripped, build.INPUTS),
-    }
+
+    # data/inputs.json can drift from the inputs the fixture was frozen at
+    # with this whole suite still green, because the model dump built below
+    # is inputs-independent -- nothing else compares them. A drifted input
+    # set makes every downstream "ok" claim false about the actual page.
+    fixture = json.loads((root / 'data' / 'engine-fixture.json').read_text())
+    assert fixture['_inputs'] == build.INPUTS, (
+        'data/inputs.json has drifted from the inputs the oracle was frozen '
+        'at -- regenerate data/engine-fixture.json with `python3 '
+        'freeze_fixture.py`')
+
+    dumped = build.dump_variants(rows, build.INPUTS)
     # build_models() is 1:1 per row, so a short dump means something upstream
     # silently dropped vehicles. Without this, an empty dump still exits 0 --
     # node has nothing to iterate and prints "ok: 0 comparisons" -- which is

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate the MODELS array in index.html from data/vehicles.csv.
 
-The CSV holds only observations and judgments. Everything the model computes --
-cost per mile, the 0-100 cost and efficiency axes -- is derived here, so adding
-a row means adding a row, not hand-recomputing nine columns in two places.
+The CSV holds only observations and judgments. Cost per mile and the 0-100
+cost axis are computed in the browser now, by engine.js -- this module still
+derives the 0-100 efficiency axis, so adding a row means adding a row, not
+hand-recomputing that column too.
 
     python3 build.py           rewrite index.html in place
     python3 build.py --check   verify index.html is up to date (exit 1 if not)
@@ -139,6 +140,31 @@ def build_models(rows, inp):
     return out
 
 
+def strip_for_oracle(rows):
+    """Rows with observed_price and msrp cleared, before build_models runs.
+
+    The workbook's published figures were computed on the original
+    placeholder prices, so comparing against it requires nulling both columns
+    first -- build_models() resolves buy_price into the emitted 'price'
+    field, so stripping observedPrice from an already-built model cannot
+    recover the placeholder.
+    """
+    return [dict(r, msrp='', observed_price='') for r in rows]
+
+
+def dump_variants(rows, inp):
+    """The two model-array variants the JS engine test feeds to VA.costPerMile.
+
+    'full' is the real data; 'workbook_oracle' runs strip_for_oracle() first.
+    Shared by test_build.py's parity check and freeze_fixture.py's
+    regeneration so both hand the engine exactly the same input.
+    """
+    return {
+        'full': build_models(rows, inp),
+        'workbook_oracle': build_models(strip_for_oracle(rows), inp),
+    }
+
+
 ENGINE_START = '/* Cost engine.'
 
 
@@ -156,7 +182,16 @@ def render(html, models, inputs, engine_src):
     position, searched forward from `start` -- engine.js contains a '];' of
     its own (repairReserve's band array), so anchoring the search to MARKER
     rather than to `start` keeps a rebuild from truncating mid-engine.
+
+    ENGINE_START has to actually be in engine.js, or the idempotency check
+    above silently stops finding the previously inlined copy -- `start` falls
+    back to MARKER and every build stacks another engine copy in front of the
+    last one instead of replacing it.
     """
+    assert ENGINE_START in engine_src, (
+        f'engine.js no longer starts with {ENGINE_START!r} -- its header '
+        'comment changed, and build.py can no longer locate the inlined '
+        'block to replace it')
     if ENGINE_START in html:
         start = html.index(ENGINE_START)
     else:

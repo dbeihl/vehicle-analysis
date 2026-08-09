@@ -1,8 +1,10 @@
-/* Asserts the JS engine reproduces the frozen Python output.
+/* Asserts the JS engine reproduces the frozen Python output. That output is
+   now also the regression baseline for engine.js and the data.
 
-   data/engine-fixture.json is ground truth, captured before the Python
-   engine was deleted. Regenerate it only when the model deliberately
-   changes -- never to make a failing port pass. */
+   data/engine-fixture.json was captured before the Python engine was
+   deleted, proving the JS port. A deliberate change to the model or to a
+   vehicle's price requires regenerating it: `python3 freeze_fixture.py`.
+   Never regenerate it just to make a failing port pass. */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 

@@ -15,7 +15,7 @@ Seventy-nine vehicles plotted on two axes: cost, against a **value** score that 
 | `engine.js` | The cost model. The only implementation; inlined into the page at build |
 | `build.py` | Emits the dataset and inlines the engine into `index.html` |
 | `test_build.py` | Checks the data pipeline, and shells out to Node to check `engine.js` |
-| `test_engine.mjs` | Checks `engine.js` against the frozen Python fixture and the workbook's published figures, run by `test_build.py` under Node |
+| `test_engine.mjs` | Checks `engine.js` against the frozen Python fixture, the workbook's published figures, the balanced-six winner, and the efficient frontier, run by `test_build.py` under Node |
 | `fetch_recalls.py` | Caches NHTSA recall-campaign counts into `data/recalls.json` |
 | `index.html` | The interactive frontier explorer. Generated, but self-contained once built. Cost per mile is computed in the browser by `engine.js` |
 | `vehicle-turnover-planner.xlsx` | The original spreadsheet model. 11 tabs, ~3,170 live formulas |
@@ -34,29 +34,35 @@ python3 build.py --check  # fail instead of rewriting; for CI or a pre-commit ho
 
 Both tasks below end the same way: run `build.py`, then `test_build.py`. `build.py` refuses to write if a price carries an incomplete provenance record, so read this section before editing, or the build will reject the row. `python3 test_build.py` remains the single command that runs everything, including the `engine.js` checks. It shells out to Node itself, so there is nothing else to run by hand.
 
+Both tasks also change what `data/engine-fixture.json` should say: it is a frozen snapshot of every vehicle's cost per mile at the prices that were in the CSV when it was captured. Changing any price, or adding a vehicle, requires regenerating it first, or `test_build.py` fails by comparing the new numbers against the old snapshot:
+
+```bash
+python3 freeze_fixture.py
+```
+
 ### Adding a vehicle
 
 One row in `data/vehicles.csv`. Never fill in cost per mile or the 0–100 axis scores — `build.py` computes those, and a stored copy would go stale.
 
 ```csv
-name,category,tier,deprec_5yr,deprec_source,price,price_year,observed_price,price_source,msrp,...
-Toyota Land Cruiser,Full-size BOF SUV,1,0.42,estimated,58000,,,,,...
+name,category,tier,deprec_5yr,deprec_source,price,price_year,observed_price,observed_price_odometer,price_source,msrp,...
+Toyota Land Cruiser,Full-size BOF SUV,1,0.42,estimated,58000,,,,,,...
 ```
 
-Leave `price_year`, `observed_price`, and `price_source` empty if you only have an estimate. An estimate with a blank provenance is honest; the tool labels it `placeholder`. An estimate wearing a year and a source is not, and the build rejects it.
+Leave `price_year`, `observed_price`, `observed_price_odometer`, and `price_source` empty if you only have an estimate. An estimate with a blank provenance is honest; the tool labels it `placeholder`. An estimate wearing a year and a source is not, and the build rejects it.
 
 ### Correcting a price
 
 Do not edit `price`. Add `observed_price` alongside it:
 
 ```diff
--Toyota Highlander Hybrid,...,36000,,,,...
-+Toyota Highlander Hybrid,...,36000,2023,39596,"Edmunds/CarGurus, 879 listed 2023 examples",...
+-Toyota Highlander Hybrid,...,36000,,,,,...
++Toyota Highlander Hybrid,...,36000,2023,39596,40000,"Edmunds/CarGurus, 879 listed 2023 examples",...
 ```
 
-`price` stays at its original value on purpose. `test_build.py` strips `observed_price` and re-runs the engine against that original figure to confirm the *formula* still matches the spreadsheet's published numbers. Overwrite `price` and you destroy the only check that is independent of this codebase — so **correcting a price never breaks `test_build.py`, but overwriting one does.**
+`price` stays at its original value on purpose. `test_build.py` strips `observed_price` and re-runs the engine against that original figure to confirm the *formula* still matches the spreadsheet's published numbers. Overwrite `price` and you destroy the only check that is independent of this codebase.
 
-`observed_price` requires both `price_year` and `price_source`. Supplying one without the other fails the build with the row named.
+`observed_price` requires `price_year`, `price_source`, and `observed_price_odometer` (the odometer reading the price was observed at). Missing `price_year` or `price_source` fails `build.py`; missing `observed_price_odometer` fails `test_build.py` instead — either way, with the row named.
 
 ## Where prices come from
 

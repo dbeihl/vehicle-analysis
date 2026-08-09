@@ -1,5 +1,5 @@
 {
-  "_comment": "Output of the Python cost engine at the commit before it was deleted. The JS port must reproduce these to ~1e-12. Raw and unrounded on purpose. Regenerate only if the MODEL changes, never to make a failing port pass.",
+  "_comment": "Froze the Python cost engine's output before it was deleted, to prove the JS port reproduces it to ~1e-12. Raw and unrounded on purpose. Now also the regression baseline for engine.js and the data: a deliberate change to the model or to a vehicle's price requires regenerating this file with `python3 freeze_fixture.py`. Never regenerate it just to make a failing port pass.",
   "_inputs": {
     "_comment": "Inputs tab of vehicle-turnover-planner.xlsx. Sources on the Sources tab.",
     "annual_miles": 55000,
