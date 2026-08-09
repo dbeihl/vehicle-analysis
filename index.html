@@ -19,10 +19,20 @@
            color:var(--ink2); line-height:1.5}
   h1{font-size:26px; font-weight:800; letter-spacing:-.025em; margin:6px 0 0; line-height:1.12}
   .masthead{border-bottom:2px solid var(--ink); padding-bottom:10px}
+  /* The caption doubles as the control that opens the assumptions panel. It
+     needs a signifier: styled as .eyebrow it was indistinguishable from the
+     five inert .cardhead labels, and its only cue was a --rule underline at
+     1.35:1 against --paper, well under the 3:1 floor for a UI boundary.
+     Reuses .chip, which already means "interactive" everywhere else here.
+     --ink2 rather than the stock --rule border: 6.08:1, and this chip sits
+     alone on --paper rather than in a card with siblings. */
   .summary{font:inherit; background:none; border:0; padding:0; cursor:pointer;
-           text-align:left; color:var(--ink2); text-decoration:underline;
-           text-decoration-color:var(--rule); text-underline-offset:3px}
-  .summary[data-dirty="true"]{color:var(--signal); font-weight:700}
+           text-align:left; color:var(--ink2)}
+  .summary[data-dirty="true"] .cap{color:var(--signal); font-weight:700}
+  .summary .cta{display:inline-block; margin-left:6px; vertical-align:1px;
+                text-transform:none; letter-spacing:normal; border-color:var(--ink2)}
+  .summary[data-dirty="true"] .cta{background:var(--signalSoft); color:var(--signal);
+                border-color:var(--signal)}
   .fields{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; padding:4px 13px 12px}
   .fields label{display:block; font-size:11px; color:var(--ink2); margin-bottom:3px}
   .fields input{width:100%; font-family:var(--mono); font-size:14px; padding:7px 8px;
@@ -307,7 +317,8 @@ var AXES=[
 ];
 var KEYS=["cost","quality","longevity","efficiency","reliability","comfort"];
 
-var W=[25,15,15,10,20,15], FILT="all", PRESET="Balanced six", SEL=null;
+var DEFAULT_W=[25,15,15,10,20,15];
+var W=DEFAULT_W.slice(), FILT="all", PRESET="Balanced six", SEL=null;
 
 var DEFAULTS=JSON.parse(JSON.stringify(INPUTS));
 var FIELDS=[
@@ -372,11 +383,18 @@ function inputsChanged(){
   for(var i=0;i<FIELDS.length;i++){var k=FIELDS[i].k; if(INPUTS[k]!==DEFAULTS[k])return true}
   return false;
 }
+function assumptionsEdited(){
+  /* The weight sliders reshape the frontier -- the page's own lede says so --
+     so a changed weight is an edit even though it is not one of the eleven
+     input fields. inputsChanged() stays as the narrower predicate that the
+     panel's Reset button uses, since Reset only touches INPUTS. */
+  return inputsChanged()||W.join(",")!==DEFAULT_W.join(",");
+}
 function summaryText(){
   return Math.round(INPUTS.annual_miles).toLocaleString()+" mi/yr · buy at "
     +Math.round(INPUTS.buy_odometer/1000)+"k · sell at "
     +Math.round(INPUTS.sell_odometer/1000)+"k · gas $"+INPUTS.gas_per_gal.toFixed(2)
-    +(inputsChanged()?" · edited":"")+" — change";
+    +(assumptionsEdited()?" · edited":"");
 }
 function drawFields(){
   ["Rank","Flat"].forEach(function(g){
@@ -395,7 +413,7 @@ function drawFields(){
 function writeHash(){
   var p=[];
   FIELDS.forEach(function(f){if(INPUTS[f.k]!==DEFAULTS[f.k])p.push(f.k+"="+INPUTS[f.k])});
-  if(W.join(",")!=="25,15,15,10,20,15")p.push("w="+W.join(","));
+  if(W.join(",")!==DEFAULT_W.join(","))p.push("w="+W.join(","));
   if(FILT!=="all")p.push("f="+FILT);
   if(SEL)p.push("v="+encodeURIComponent(SEL));
   var h=p.join("&");
@@ -643,6 +661,13 @@ function drawChart(st){
   }
   s+='<text x="'+px(50)+'" y="'+(VH-8)+'" font-family="var(--mono)" font-size="9.5" letter-spacing="1.3" fill="var(--ink2)" text-anchor="middle">CHEAPER PER MILE →</text>';
   s+='<text transform="translate(11,'+py(50)+') rotate(-90)" font-family="var(--mono)" font-size="9.5" letter-spacing="1.3" fill="var(--ink2)" text-anchor="middle">BETTER VEHICLE →</text>';
+  /* The dirty flag has to live INSIDE the plot. On the masthead it is
+     trivially cropped: someone changes an assumption, screenshots the chart
+     card, and it reads as the default view to whoever receives it. */
+  if(assumptionsEdited()){
+    s+='<text x="'+(VW-PAD.r)+'" y="'+(PAD.t+9)+'" font-size="9" '
+      +'letter-spacing="1.3" fill="#0E6B5C" text-anchor="end">EDITED</text>';
+  }
   document.getElementById('chart').innerHTML=s;
   document.getElementById('frontStat').textContent='Frontier · '+st.front.length+' of '+st.scored.length+' undominated';
 }
@@ -703,8 +728,9 @@ function render(){
     b.setAttribute('aria-pressed',b.dataset.k===FILT);
   });
   var tog=document.getElementById("assumeToggle");
-  tog.textContent=summaryText();
-  tog.setAttribute("data-dirty",inputsChanged()?"true":"false");
+  tog.innerHTML='<span class="cap">'+esc(summaryText())+'</span>'
+    +'<span class="cta chip small">Change</span>';
+  tog.setAttribute("data-dirty",assumptionsEdited()?"true":"false");
   writeHash();
 }
 
