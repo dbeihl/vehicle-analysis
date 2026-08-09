@@ -42,6 +42,7 @@ def main():
     check_price_resolution()
     check_emitted_schema(real)
     check_row_keys(real)
+    check_freeze_fixture_key_format(real)
     check_page_up_to_date(real)
     check_js_engine_parity(real)
     check_recall_status_classification()
@@ -106,6 +107,42 @@ def check_row_keys(rows):
         real = [t for t in trims if t != 'unspecified']
         assert not real or len(real) == len(trims), \
             f'{plate}: partially assigned trims {trims}'
+
+
+def check_freeze_fixture_key_format(rows):
+    """freeze_fixture.py's writer must key by build.row_key(v), not bare name.
+
+    test_engine.mjs reads `fixture[variant][v.key]`, and v.key is
+    build.row_key(v) (see build.build_models). A fixture keyed by bare
+    nameplate would silently disagree with that reader the moment a
+    nameplate carries more than one trim -- with today's one-trim-per-name
+    data it would instead make every entry compare as never-found, since
+    'Name' and 'Name|unspecified' are different strings. Pins the format so
+    the writer and the reader cannot drift apart again without this failing.
+
+    Calls freeze_fixture.build_fixture() -- the exact code path
+    `python3 freeze_fixture.py` uses to compute the fixture -- but never
+    writes to data/engine-fixture.json, so it cannot clobber the frozen
+    Python engine's output, the one piece of ground truth this codebase did
+    not produce.
+    """
+    import shutil
+    import freeze_fixture
+
+    node = shutil.which('node')
+    assert node, ('node is required to test freeze_fixture.py and was not '
+                  'found. It is a development dependency only; the page '
+                  'ships without it.')
+
+    fixture = freeze_fixture.build_fixture(rows, node)
+    expected = {build.row_key(v) for v in rows}
+    for variant in ('full', 'workbook_oracle'):
+        got = set(fixture[variant])
+        assert got == expected, (
+            f'freeze_fixture.py wrote {variant!r} keys that do not match '
+            f'build.row_key(v) -- unexpected: {sorted(got - expected)[:3]}, '
+            f'missing: {sorted(expected - got)[:3]}. The writer may have '
+            f'reverted to keying by bare nameplate.')
 
 
 def check_page_up_to_date(rows):

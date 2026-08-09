@@ -29,7 +29,10 @@ FIXTURE_COMMENT = (
     "also the regression baseline for engine.js and the data: a deliberate "
     "change to the model or to a vehicle's price requires regenerating this "
     "file with `python3 freeze_fixture.py`. Never regenerate it just to "
-    "make a failing port pass."
+    "make a failing port pass. Keyed by build.row_key(v), i.e. "
+    "'(nameplate|trim)' -- e.g. 'Toyota Highlander Hybrid|unspecified' -- "
+    "not by bare nameplate, because a nameplate stops being a unique key "
+    "the moment it carries more than one trim."
 )
 
 # Runs engine.js under plain Node (no package.json in this repo, so a .js
@@ -49,25 +52,23 @@ for (const variant of Object.keys(payload.models)) {
     if (!Number.isFinite(cpm)) {
       throw new Error(variant + ': ' + m.name + ': costPerMile returned ' + cpm);
     }
-    out[variant][m.name] = cpm;
+    out[variant][m.key] = cpm;
   }
 }
 writeFileSync(process.argv[3], JSON.stringify(out));
 """
 
 
-def main():
-    node = shutil.which('node')
-    if not node:
-        sys.exit('node is required to regenerate the fixture and was not '
-                 'found. It is a development dependency only; the page '
-                 'ships without it.')
+def build_fixture(rows, node):
+    """Compute the fixture dict for `rows`, without writing to disk.
 
-    rows = build.load()
-    problems = build.price_problems(rows)
-    if problems:
-        sys.exit('price provenance is incomplete:\n  ' + '\n  '.join(problems))
-
+    Every entry is keyed by build.row_key(v) -- '(nameplate|trim)' -- not by
+    bare nameplate, so this agrees with what test_engine.mjs looks up via
+    `fixture[variant][v.key]`. Split out of main() so a test can pin this key
+    format against build.row_key() directly, without going anywhere near the
+    real data/engine-fixture.json -- that file is the only record left of the
+    deleted Python engine's output, and nothing in a test run may overwrite it.
+    """
     # Same two variants check_js_engine_parity() feeds the engine: 'full'
     # from the real rows, 'workbook_oracle' from rows with observed_price
     # and msrp stripped before build_models runs.
@@ -77,8 +78,8 @@ def main():
     # same (real or stripped) rows -- build_models() rounds 'price' to an
     # int for the page, which the fixture deliberately does not do.
     raw = {
-        'full': {v['name']: build.buy_price(v, build.INPUTS) for v in rows},
-        'workbook_oracle': {v['name']: build.buy_price(v, build.INPUTS)
+        'full': {build.row_key(v): build.buy_price(v, build.INPUTS) for v in rows},
+        'workbook_oracle': {build.row_key(v): build.buy_price(v, build.INPUTS)
                             for v in build.strip_for_oracle(rows)},
     }
 
@@ -99,7 +100,7 @@ def main():
         cpm_path.unlink(missing_ok=True)
         script_path.unlink(missing_ok=True)
 
-    fixture = {
+    return {
         '_comment': FIXTURE_COMMENT,
         '_inputs': build.INPUTS,
         'full': {
@@ -115,10 +116,25 @@ def main():
             for name in cpms['workbook_oracle']
         },
     }
+
+
+def main():
+    node = shutil.which('node')
+    if not node:
+        sys.exit('node is required to regenerate the fixture and was not '
+                 'found. It is a development dependency only; the page '
+                 'ships without it.')
+
+    rows = build.load()
+    problems = build.price_problems(rows)
+    if problems:
+        sys.exit('price provenance is incomplete:\n  ' + '\n  '.join(problems))
+
+    fixture = build_fixture(rows, node)
     fixture_path = ROOT / 'data' / 'engine-fixture.json'
     fixture_path.write_text(json.dumps(fixture, indent=2, sort_keys=True) + '\n')
     print(f'wrote data/engine-fixture.json '
-          f'({len(cpms["full"])} vehicles, full + workbook_oracle)')
+          f'({len(fixture["full"])} vehicles, full + workbook_oracle)')
 
 
 if __name__ == '__main__':

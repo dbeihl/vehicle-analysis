@@ -10,7 +10,7 @@ Seventy-nine vehicles plotted on two axes: cost, against a **value** score that 
 
 | Path | What it is |
 | ---- | ---------- |
-| `data/vehicles.csv` | The dataset. One row per vehicle, observations and judgments only |
+| `data/vehicles.csv` | The dataset. One row per (nameplate, trim), observations and judgments only |
 | `data/inputs.json` | Every cost assumption — fuel, tires, repair reserve, the depreciation curve |
 | `engine.js` | The cost model. The only implementation; inlined into the page at build |
 | `build.py` | Emits the dataset and inlines the engine into `index.html` |
@@ -45,11 +45,13 @@ python3 freeze_fixture.py
 One row in `data/vehicles.csv`. Never fill in cost per mile or the 0–100 axis scores — `build.py` computes those, and a stored copy would go stale.
 
 ```csv
-name,category,tier,deprec_5yr,deprec_source,price,price_year,observed_price,observed_price_odometer,price_source,msrp,...
-Toyota Land Cruiser,Full-size BOF SUV,1,0.42,estimated,58000,,,,,,...
+name,trim_name,trim,category,tier,deprec_5yr,deprec_source,price,price_year,observed_price,observed_price_odometer,price_source,msrp,...
+Toyota Land Cruiser,,unspecified,Full-size BOF SUV,1,0.42,estimated,58000,,,,,,...
 ```
 
 Leave `price_year`, `observed_price`, `observed_price_odometer`, and `price_source` empty if you only have an estimate. An estimate with a blank provenance is honest; the tool labels it `placeholder`. An estimate wearing a year and a source is not, and the build rejects it.
+
+Leave `trim_name` empty and set `trim` to `unspecified` unless you are adding a real trim tier alongside others on the same nameplate — see the `trim` and `trim_name` entries in the column table below.
 
 ### Correcting a price
 
@@ -72,6 +74,8 @@ Every monetary figure in this project is USD. As a data-entry check against a fo
 
 | Column | Meaning |
 | ------ | ------- |
+| `trim` | Row identity, together with `name`: `base`, `volume`, `loaded`, or `unspecified`. A nameplate must be all `unspecified` or fully populated across its trims — assigning a real trim to some of a nameplate's rows and leaving others `unspecified` is rejected |
+| `trim_name` | The trim's own badge, e.g. `XLE` or `Limited`. Required whenever `trim` is a real tier (`base`, `volume`, `loaded`); leave it blank when `trim` is `unspecified` |
 | `observed_price` | A sourced market price for that model year. Preferred over everything. The aggregation varies and `price_source` records it: the Highlander Hybrid is an average across 879 listings, the Escalade a median across three services that disagreed by $5,000 |
 | `price_year` | The model year being priced. The 40,000-mile buy point is a roughly 3-year-old vehicle, so in 2026 that is a 2023 |
 | `price_source` | Which listing services, and how many listings |

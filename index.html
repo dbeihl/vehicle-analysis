@@ -533,8 +533,24 @@ function collapseByNameplate(list){
     var m=list[i];
     if(!by[m.name]){by[m.name]={rep:m,trims:[]}; order.push(m.name)}
     by[m.name].trims.push(m);
-    /* Represent the nameplate by its best-scoring trim, so collapsing never
-       hides a vehicle that would have made the frontier. */
+    /* The representative is the trim with the highest `total` (the weighted
+       sum, including cost). The frontier below is then computed over these
+       representatives, not over every trim -- and `total` is not the same
+       criterion as the frontier's Pareto test on (cost, value). A nameplate
+       can have an undominated trim on a different axis balance than the one
+       `total` picks: base at (cost 90, value 50) and loaded at (cost 70,
+       value 62) collapses to loaded because its total is higher, even though
+       base was the cheapest point on the chart and genuinely undominated.
+       Collapsing before the frontier is computed can therefore both hide an
+       undominated trim (base, above) and promote a dominated one (a third
+       vehicle at (75, 45), beaten on both axes by the base trim that just
+       vanished). This is inherent to representative-based collapsing, not a
+       bug in which representative gets picked -- no choice of representative
+       avoids it. The right semantics (representative-based, per-trim, or
+       per-tier) is unresolved and must be settled before real trim data
+       lands. With every row at trim=unspecified today, each nameplate has
+       exactly one trim, so this loop is an identity: `rep` is always that
+       trim and no reordering can occur yet. */
     if(m.total>by[m.name].rep.total)by[m.name].rep=m;
   }
   var out=[];
