@@ -205,25 +205,36 @@ def render(html, models, inputs, engine_src):
     return html[:start] + block + html[end:]
 
 
+def render_current(rows):
+    """Render index.html from `rows` and the sources on disk right now.
+
+    Returns (on_disk_html, freshly_rendered_html, models). `--check` below and
+    test_build.py's stale-page guard both need "what does index.html look
+    like if we build it this instant" -- this is the one place that answers
+    that, so the two call paths cannot silently diverge into two different
+    ideas of what "up to date" means.
+    """
+    html = (ROOT / 'index.html').read_text()
+    engine_src = (ROOT / 'engine.js').read_text()
+    models = build_models(rows, INPUTS)
+    updated = render(html, models, INPUTS, engine_src)
+    return html, updated, models
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--check', action='store_true',
                     help='exit 1 if index.html is stale instead of rewriting it')
     args = ap.parse_args()
 
-    path = ROOT / 'index.html'
-    html = path.read_text()
     rows = load()
-    engine_src = (ROOT / 'engine.js').read_text()
-
     problems = price_problems(rows)
     if problems:
         sys.exit('price provenance is incomplete:\n  '
                  + '\n  '.join(problems))
 
-    models = build_models(rows, INPUTS)
+    html, updated, models = render_current(rows)
     observed = sum(1 for m in models if m['priceBasis'] == 'observed')
-    updated = render(html, models, INPUTS, engine_src)
 
     if args.check:
         if updated != html:
@@ -231,7 +242,7 @@ def main():
         print(f'index.html up to date ({len(models)} vehicles, '
               f'{observed} observed / {len(models) - observed} placeholder)')
         return
-    path.write_text(updated)
+    (ROOT / 'index.html').write_text(updated)
     print(f'wrote index.html ({len(models)} vehicles, '
           f'{observed} observed / {len(models) - observed} placeholder)')
 

@@ -102,13 +102,14 @@ console.log(`ok: ${Object.keys(PUBLISHED).length} published $/mile figures match
 // StrategyMatrix "Balanced six": winner, score, and the efficient frontier.
 // Ported from test_build.py's former Python assertions -- cost/cpm are
 // computed client-side now (VA.costPerMile), so this reproduces the 0-100
-// cost score build.scale() used to bake into the emitted dict, against the
-// workbook_oracle variant's own cpm range (same 79 rows the Python version
-// scaled against).
+// cost score against the workbook_oracle variant's own cpm range (same 79
+// rows the Python version scaled against). Deliberately unrounded and in the
+// same multiply-then-divide order as index.html's compute() --
+// `m.cost=hi===lo?100:100*(hi-raw[i])/(hi-lo)` -- so this exercises the same
+// cost axis the page ships, not a rounded stand-in for it.
 function scale(value, lo, hi, invert) {
   if (hi === lo) return 100.0;
-  const pct = (invert ? hi - value : value - lo) / (hi - lo);
-  return Math.round(pct * 1000) / 10;
+  return invert ? 100 * (hi - value) / (hi - lo) : 100 * (value - lo) / (hi - lo);
 }
 
 // Same weights INPUTS already carries as default_weights, not re-typed here.

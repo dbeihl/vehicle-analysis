@@ -28,6 +28,7 @@ def main():
 
     check_price_resolution()
     check_emitted_schema(real)
+    check_page_up_to_date(real)
     check_js_engine_parity(real)
     check_recall_status_classification()
     check_readme_counts(real)
@@ -61,6 +62,25 @@ def check_emitted_schema(rows):
         baked_in = [f for f in ('cpm', 'peryr', 'cost') if f in m]
         assert not baked_in, \
             f'{m["name"]}: cost fields must be computed client-side, not emitted: {baked_in}'
+
+
+def check_page_up_to_date(rows):
+    """index.html on disk must be exactly what build.py would generate now.
+
+    Every other check in this file runs against freshly generated dumps --
+    engine.js invoked directly, models built straight from the CSV. None of
+    that touches the committed index.html, so a hand-edit or a stale build
+    committed by accident ships green anyway: the published page is the
+    product, and nothing above proves the product matches the source.
+
+    build.py --check already does this exact comparison; reuse it via
+    build.render_current() rather than re-deriving "up to date" a second way
+    that could quietly drift from the first.
+    """
+    html, updated, _ = build.render_current(rows)
+    assert updated == html, (
+        'index.html does not match what build.py would generate from the '
+        'current sources -- run: python3 build.py')
 
 
 def check_js_engine_parity(rows):
