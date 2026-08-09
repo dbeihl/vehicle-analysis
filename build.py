@@ -15,7 +15,6 @@ import argparse
 import csv
 import json
 import pathlib
-import re
 import sys
 
 ROOT = pathlib.Path(__file__).parent
@@ -50,17 +49,78 @@ def repair_reserve(inp):
     return sum(m * r for m, r in bands) / miles
 
 
+def resale_multiplier(v, inp):
+    """Resale strength relative to the industry-average 5-year depreciation."""
+    return (1 - v['deprec_5yr']) / (1 - inp['industry_avg_5yr_deprec'])
+
+
+def buy_price(v, inp):
+    """Price at the buy odometer, and the basis it came from.
+
+    Observed market listings only. MSRP-through-the-curve was tried and
+    retired: resale_multiplier is built from FIVE-year depreciation but the buy
+    point is a ~3-year-old vehicle, so fast-depreciating models get penalised
+    twice. It put the 2023 Escalade at $50,941 against an observed $70,777
+    across three listing services -- worse than the placeholder it replaced.
+
+    msrp/msrp_year/msrp_trim are kept as reference only. They record what a
+    vehicle costs new; they no longer compute what a used one costs.
+    """
+    if v.get('observed_price'):
+        return float(v['observed_price']), 'observed'
+    return float(v['price']), 'placeholder'
+
+
+def price_problems(rows):
+    """Data-integrity checks on price provenance. Empty list means clean.
+
+    Unknown provenance has to be an error rather than a silent default, or the
+    check is decorative -- a placeholder that nobody flags reads exactly like a
+    verified figure once it reaches the page.
+    """
+    problems = []
+    for v in rows:
+        name = v['name']
+        if v.get('observed_price'):
+            if not v.get('price_year'):
+                problems.append(f'{name}: observed_price without price_year')
+            if not v.get('price_source'):
+                problems.append(f'{name}: observed_price without price_source')
+        else:
+            # A placeholder carrying a year or a source claims provenance it does
+            # not have. It would render identically to a verified row.
+            for orphan in ('price_year', 'price_source'):
+                if v.get(orphan):
+                    problems.append(f'{name}: {orphan} set on a placeholder price; '
+                                    f'only observed_price may claim one')
+        if v.get('msrp'):
+            if not v.get('msrp_year'):
+                problems.append(f'{name}: msrp without msrp_year')
+            if not v.get('msrp_trim'):
+                problems.append(f'{name}: msrp without msrp_trim -- trim '
+                                f'unstated, and trims span $7,655 on one nameplate')
+            if not v.get('msrp_source'):
+                problems.append(f'{name}: msrp without msrp_source')
+        else:
+            # Same rule as above, applied to the reference columns. Metadata
+            # describing a figure that is not there is provenance for nothing.
+            for orphan in ('msrp_year', 'msrp_trim', 'msrp_source'):
+                if v.get(orphan):
+                    problems.append(f'{name}: {orphan} set without an msrp')
+    return problems
+
+
 def cost_per_mile(v, inp):
     """All-in dollars per mile over one ownership cycle. Mirrors Models!AB."""
     miles = inp['sell_odometer'] - inp['buy_odometer']
     years = miles / inp['annual_miles']
     anchors = inp['retention_anchors']
 
-    # Resale strength relative to the industry-average 5-year depreciation.
-    resale_mult = (1 - v['deprec_5yr']) / (1 - inp['industry_avg_5yr_deprec'])
+    price, _ = buy_price(v, inp)
+    resale_mult = resale_multiplier(v, inp)
     ratio = (retention_index(inp['sell_odometer'], anchors)
              / retention_index(inp['buy_odometer'], anchors))
-    resale = min(v['price'], v['price'] * ratio * resale_mult)
+    resale = min(price, price * ratio * resale_mult)
 
     fuel = (inp['diesel_per_gal'] if v['fuel'] == 'Diesel'
             else inp['gas_per_gal']) / v['mpg']
@@ -68,19 +128,19 @@ def cost_per_mile(v, inp):
              else inp['tire_set_crossover']) / inp['tire_life_miles']
 
     if inp['financing_mode'] == 'cash':
-        capital = (v['price'] + resale) / 2 * inp['cash_opportunity_rate']
+        capital = (price + resale) / 2 * inp['cash_opportunity_rate']
     else:
-        financed = v['price'] * (1 - inp['down_payment_pct'])
+        financed = price * (1 - inp['down_payment_pct'])
         capital = (financed * inp['avg_outstanding_balance_factor'] * inp['loan_apr']
-                   + v['price'] * inp['down_payment_pct'] * inp['cash_opportunity_rate'])
+                   + price * inp['down_payment_pct'] * inp['cash_opportunity_rate'])
 
-    return ((v['price'] - resale) / miles                       # depreciation
+    return ((price - resale) / miles                           # depreciation
             + fuel + tires
             + inp['scheduled_maint_per_mile']
             + repair_reserve(inp)
             + (inp['insurance_per_year'] + inp['registration_per_year'])
             / inp['annual_miles']
-            + v['price'] * inp['sales_tax_rate'] / miles        # one-time, spread
+            + price * inp['sales_tax_rate'] / miles             # one-time, spread
             + capital * years / miles)
 
 
@@ -121,9 +181,11 @@ def build_models(rows, inp):
 
     out = []
     for v, cpm in zip(rows, cpms):
+        price, basis = buy_price(v, inp)
         out.append({
             'name': v['name'], 'cat': v['category'], 'tier': v['tier'],
-            'price': int(v['price']), 'mpg': num(v['mpg']), 'fuel': v['fuel'],
+            'price': int(round(price)), 'priceBasis': basis,
+            'priceYear': v.get('price_year') or '', 'mpg': num(v['mpg']), 'fuel': v['fuel'],
             'gvwr': v['gvwr_note'],
             'cpm': round(cpm, 3),
             'peryr': round(cpm * inp['annual_miles']),
@@ -154,16 +216,26 @@ def main():
 
     path = ROOT / 'index.html'
     html = path.read_text()
-    models = build_models(load(), INPUTS)
+    rows = load()
+
+    problems = price_problems(rows)
+    if problems:
+        sys.exit('price provenance is incomplete:\n  '
+                 + '\n  '.join(problems))
+
+    models = build_models(rows, INPUTS)
+    observed = sum(1 for m in models if m['priceBasis'] == 'observed')
     updated = render(html, models)
 
     if args.check:
         if updated != html:
             sys.exit('index.html is stale -- run: python3 build.py')
-        print(f'index.html up to date ({len(models)} vehicles)')
+        print(f'index.html up to date ({len(models)} vehicles, '
+              f'{observed} observed / {len(models) - observed} placeholder)')
         return
     path.write_text(updated)
-    print(f'wrote index.html ({len(models)} vehicles)')
+    print(f'wrote index.html ({len(models)} vehicles, '
+          f'{observed} observed / {len(models) - observed} placeholder)')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,1279 @@
+{
+  "Cadillac Escalade": {
+    "by_year": {
+      "2021": 9,
+      "2023": 4
+    },
+    "comparable": false,
+    "make": "Cadillac",
+    "model": "Escalade",
+    "per_year": 6.5,
+    "powertrain_years": [
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Cadillac Escalade ESV": {
+    "by_year": {
+      "2019": 1,
+      "2021": 10,
+      "2023": 4
+    },
+    "comparable": true,
+    "make": "Cadillac",
+    "model": "Escalade ESV",
+    "per_year": 5.0,
+    "powertrain_years": [
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Chevrolet Colorado": {
+    "by_year": {
+      "2021": 1,
+      "2023": 3
+    },
+    "comparable": false,
+    "make": "Chevrolet",
+    "model": "Colorado",
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Chevrolet Equinox": {
+    "by_year": {
+      "2019": 4,
+      "2021": 4,
+      "2023": 3
+    },
+    "comparable": true,
+    "make": "Chevrolet",
+    "model": "Equinox",
+    "per_year": 3.67,
+    "powertrain_years": [
+      2019
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Chevrolet Silverado 1500": {
+    "by_year": {
+      "2019": 10,
+      "2021": 8,
+      "2023": 3
+    },
+    "comparable": true,
+    "make": "Chevrolet",
+    "model": "Silverado 1500",
+    "per_year": 7.0,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Chevrolet Suburban": {
+    "by_year": {
+      "2019": 3,
+      "2021": 12,
+      "2023": 3
+    },
+    "comparable": true,
+    "make": "Chevrolet",
+    "model": "Suburban",
+    "per_year": 6.0,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Chevrolet Tahoe": {
+    "by_year": {
+      "2019": 2,
+      "2021": 16,
+      "2023": 5
+    },
+    "comparable": true,
+    "make": "Chevrolet",
+    "model": "Tahoe",
+    "per_year": 7.67,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Chevrolet Traverse": {
+    "by_year": {
+      "2019": 3,
+      "2021": 3,
+      "2023": 2
+    },
+    "comparable": true,
+    "make": "Chevrolet",
+    "model": "Traverse",
+    "per_year": 2.67,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Dodge Durango": {
+    "by_year": {
+      "2019": 4,
+      "2021": 7,
+      "2023": 1
+    },
+    "comparable": true,
+    "make": "Dodge",
+    "model": "Durango",
+    "per_year": 4.0,
+    "powertrain_years": [
+      2019,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Ford Edge": {
+    "by_year": {
+      "2019": 3,
+      "2021": 7,
+      "2023": 4
+    },
+    "comparable": true,
+    "make": "Ford",
+    "model": "Edge",
+    "per_year": 4.67,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Ford Escape Hybrid": {
+    "by_year": {
+      "2021": 1
+    },
+    "comparable": false,
+    "make": "Ford",
+    "model": "Escape Hybrid",
+    "per_year": 1.0,
+    "powertrain_years": [],
+    "variant_query": true,
+    "years_answered": 1,
+    "years_no_data": [
+      2019,
+      2023
+    ],
+    "years_requested": 3
+  },
+  "Ford Expedition": {
+    "by_year": {
+      "2019": 11,
+      "2021": 12,
+      "2023": 8
+    },
+    "comparable": true,
+    "make": "Ford",
+    "model": "Expedition",
+    "per_year": 10.33,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Ford Explorer": {
+    "by_year": {
+      "2019": 6,
+      "2021": 26,
+      "2023": 15
+    },
+    "comparable": true,
+    "make": "Ford",
+    "model": "Explorer",
+    "per_year": 15.67,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Ford F-150": {
+    "by_year": {
+      "2019": 9,
+      "2021": 29,
+      "2023": 12
+    },
+    "comparable": true,
+    "make": "Ford",
+    "model": "F-150",
+    "per_year": 16.67,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Ford F-250 (HD)": {
+    "by_year": {
+      "2019": 4
+    },
+    "comparable": false,
+    "make": "Ford",
+    "model": "F-250",
+    "per_year": 4.0,
+    "powertrain_years": [
+      2019
+    ],
+    "variant_query": false,
+    "years_answered": 1,
+    "years_no_data": [
+      2021,
+      2023
+    ],
+    "years_requested": 3
+  },
+  "Ford Maverick (2.0T)": {
+    "by_year": {
+      "2023": 21
+    },
+    "comparable": false,
+    "make": "Ford",
+    "model": "Maverick",
+    "per_year": 21.0,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 1,
+    "years_no_data": [
+      2019,
+      2021
+    ],
+    "years_requested": 3
+  },
+  "Ford Maverick Hybrid": {
+    "by_year": {
+      "2023": 1
+    },
+    "comparable": false,
+    "make": "Ford",
+    "model": "Maverick Hybrid",
+    "per_year": 1.0,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": true,
+    "years_answered": 1,
+    "years_no_data": [
+      2019,
+      2021
+    ],
+    "years_requested": 3
+  },
+  "Ford Ranger": {
+    "by_year": {
+      "2019": 11,
+      "2021": 6,
+      "2023": 4
+    },
+    "comparable": true,
+    "make": "Ford",
+    "model": "Ranger",
+    "per_year": 7.0,
+    "powertrain_years": [
+      2019
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "GMC Acadia": {
+    "by_year": {
+      "2019": 2,
+      "2021": 2,
+      "2023": 4
+    },
+    "comparable": true,
+    "make": "GMC",
+    "model": "Acadia",
+    "per_year": 2.67,
+    "powertrain_years": [
+      2019,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "GMC Canyon": {
+    "by_year": {
+      "2021": 2,
+      "2023": 3
+    },
+    "comparable": false,
+    "make": "GMC",
+    "model": "Canyon",
+    "per_year": 2.5,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "GMC Sierra 1500": {
+    "by_year": {
+      "2019": 10,
+      "2021": 7,
+      "2023": 3
+    },
+    "comparable": true,
+    "make": "GMC",
+    "model": "Sierra 1500",
+    "per_year": 6.67,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "GMC Yukon": {
+    "by_year": {
+      "2019": 2,
+      "2021": 13,
+      "2023": 4
+    },
+    "comparable": true,
+    "make": "GMC",
+    "model": "Yukon",
+    "per_year": 6.33,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "GMC Yukon XL": {
+    "by_year": {
+      "2019": 2,
+      "2021": 12,
+      "2023": 4
+    },
+    "comparable": true,
+    "make": "GMC",
+    "model": "Yukon XL",
+    "per_year": 6.0,
+    "powertrain_years": [
+      2019,
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Honda CR-V": {
+    "by_year": {
+      "2019": 8,
+      "2021": 4,
+      "2023": 3
+    },
+    "comparable": true,
+    "make": "Honda",
+    "model": "CR-V",
+    "per_year": 5.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Honda CR-V Hybrid": {
+    "by_year": {
+      "2021": 3,
+      "2023": 5
+    },
+    "comparable": false,
+    "make": "Honda",
+    "model": "CR-V Hybrid",
+    "per_year": 4.0,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": true,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Honda HR-V": {
+    "by_year": {
+      "2019": 7,
+      "2021": 4,
+      "2023": 3
+    },
+    "comparable": true,
+    "make": "Honda",
+    "model": "HR-V",
+    "per_year": 4.67,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Honda Passport": {
+    "by_year": {
+      "2019": 10,
+      "2021": 7,
+      "2023": 5
+    },
+    "comparable": true,
+    "make": "Honda",
+    "model": "Passport",
+    "per_year": 7.33,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Honda Pilot": {
+    "by_year": {
+      "2019": 13,
+      "2021": 10,
+      "2023": 5
+    },
+    "comparable": true,
+    "make": "Honda",
+    "model": "Pilot",
+    "per_year": 9.33,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Honda Ridgeline": {
+    "by_year": {
+      "2019": 12,
+      "2021": 7,
+      "2023": 5
+    },
+    "comparable": true,
+    "make": "Honda",
+    "model": "Ridgeline",
+    "per_year": 8.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Hyundai Palisade": {
+    "by_year": {
+      "2021": 6,
+      "2023": 5
+    },
+    "comparable": false,
+    "make": "Hyundai",
+    "model": "Palisade",
+    "per_year": 5.5,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Hyundai Santa Fe": {
+    "by_year": {
+      "2019": 2,
+      "2021": 7,
+      "2023": 1
+    },
+    "comparable": true,
+    "make": "Hyundai",
+    "model": "Santa Fe",
+    "per_year": 3.33,
+    "powertrain_years": [
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Hyundai Santa Fe Hybrid": {
+    "by_year": {
+      "2021": 3,
+      "2023": 1
+    },
+    "comparable": false,
+    "make": "Hyundai",
+    "model": "Santa Fe Hybrid",
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "variant_query": true,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Hyundai Tucson": {
+    "by_year": {
+      "2019": 1,
+      "2021": 1,
+      "2023": 2
+    },
+    "comparable": true,
+    "make": "Hyundai",
+    "model": "Tucson",
+    "per_year": 1.33,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Jeep Cherokee": {
+    "by_year": {
+      "2019": 11,
+      "2021": 4,
+      "2023": 1
+    },
+    "comparable": true,
+    "make": "Jeep",
+    "model": "Cherokee",
+    "per_year": 5.33,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Jeep Compass": {
+    "by_year": {
+      "2019": 2,
+      "2023": 2
+    },
+    "comparable": false,
+    "make": "Jeep",
+    "model": "Compass",
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2021
+    ],
+    "years_requested": 3
+  },
+  "Jeep Gladiator": {
+    "by_year": {
+      "2021": 8,
+      "2023": 6
+    },
+    "comparable": false,
+    "make": "Jeep",
+    "model": "Gladiator",
+    "per_year": 7.0,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Jeep Grand Cherokee": {
+    "by_year": {
+      "2019": 7,
+      "2021": 12,
+      "2023": 20
+    },
+    "comparable": true,
+    "make": "Jeep",
+    "model": "Grand Cherokee",
+    "per_year": 13.0,
+    "powertrain_years": [
+      2019,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Jeep Grand Cherokee L": {
+    "by_year": {
+      "2021": 3,
+      "2023": 5
+    },
+    "comparable": false,
+    "make": "Jeep",
+    "model": "Grand Cherokee L",
+    "per_year": 4.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Jeep Grand Wagoneer": {
+    "by_year": {
+      "2023": 7
+    },
+    "comparable": false,
+    "make": "Jeep",
+    "model": "Grand Wagoneer",
+    "per_year": 7.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 1,
+    "years_no_data": [
+      2019,
+      2021
+    ],
+    "years_requested": 3
+  },
+  "Jeep Wrangler": {
+    "by_year": {
+      "2019": 9,
+      "2021": 15,
+      "2023": 14
+    },
+    "comparable": true,
+    "make": "Jeep",
+    "model": "Wrangler",
+    "per_year": 12.67,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Jeep Wrangler 4xe": {
+    "by_year": {
+      "2021": 2,
+      "2023": 3
+    },
+    "comparable": false,
+    "make": "Jeep",
+    "model": "Wrangler 4xe",
+    "per_year": 2.5,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Kia Sorento": {
+    "by_year": {
+      "2019": 2,
+      "2021": 4,
+      "2023": 3
+    },
+    "comparable": true,
+    "make": "Kia",
+    "model": "Sorento",
+    "per_year": 3.0,
+    "powertrain_years": [
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Kia Sorento Hybrid": {
+    "by_year": {
+      "2021": 2,
+      "2023": 2
+    },
+    "comparable": false,
+    "make": "Kia",
+    "model": "Sorento Hybrid",
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "variant_query": true,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Kia Sportage": {
+    "by_year": {
+      "2019": 2,
+      "2021": 2,
+      "2023": 6
+    },
+    "comparable": true,
+    "make": "Kia",
+    "model": "Sportage",
+    "per_year": 3.33,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Kia Telluride": {
+    "by_year": {
+      "2021": 5,
+      "2023": 6
+    },
+    "comparable": false,
+    "make": "Kia",
+    "model": "Telluride",
+    "per_year": 5.5,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Lexus NX Hybrid": {
+    "by_year": {
+      "2023": 2
+    },
+    "comparable": false,
+    "make": "Lexus",
+    "model": "NX Hybrid",
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "variant_query": true,
+    "years_answered": 1,
+    "years_no_data": [
+      2019,
+      2021
+    ],
+    "years_requested": 3
+  },
+  "Lexus RX Hybrid": {
+    "by_year": {
+      "2021": 1,
+      "2023": 2
+    },
+    "comparable": false,
+    "make": "Lexus",
+    "model": "RX Hybrid",
+    "per_year": 1.5,
+    "powertrain_years": [],
+    "variant_query": true,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Lincoln Navigator": {
+    "by_year": {
+      "2019": 10,
+      "2021": 12,
+      "2023": 8
+    },
+    "comparable": true,
+    "make": "Lincoln",
+    "model": "Navigator",
+    "per_year": 10.0,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Mazda CX-5": {
+    "by_year": {
+      "2019": 2
+    },
+    "comparable": false,
+    "make": "Mazda",
+    "model": "CX-5",
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 1,
+    "years_no_data": [
+      2021,
+      2023
+    ],
+    "years_requested": 3
+  },
+  "Mazda CX-9": {
+    "by_year": {
+      "2019": 2,
+      "2021": 1
+    },
+    "comparable": false,
+    "make": "Mazda",
+    "model": "CX-9",
+    "per_year": 1.5,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2023
+    ],
+    "years_requested": 3
+  },
+  "Nissan Armada": {
+    "by_year": {
+      "2019": 1,
+      "2021": 2,
+      "2023": 1
+    },
+    "comparable": true,
+    "make": "Nissan",
+    "model": "Armada",
+    "per_year": 1.33,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Nissan Frontier (2022+)": {
+    "by_year": {
+      "2019": 1,
+      "2021": 2,
+      "2023": 1
+    },
+    "comparable": true,
+    "make": "Nissan",
+    "model": "Frontier",
+    "per_year": 1.33,
+    "powertrain_years": [
+      2021
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Nissan Pathfinder (2022+)": {
+    "by_year": {
+      "2019": 2,
+      "2023": 1
+    },
+    "comparable": false,
+    "make": "Nissan",
+    "model": "Pathfinder",
+    "per_year": 1.5,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2021
+    ],
+    "years_requested": 3
+  },
+  "Nissan Rogue": {
+    "by_year": {
+      "2019": 3,
+      "2021": 10,
+      "2023": 6
+    },
+    "comparable": true,
+    "make": "Nissan",
+    "model": "Rogue",
+    "per_year": 6.33,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Nissan Titan": {
+    "by_year": {
+      "2019": 4,
+      "2021": 5,
+      "2023": 2
+    },
+    "comparable": true,
+    "make": "Nissan",
+    "model": "Titan",
+    "per_year": 3.67,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Ram 1500": {
+    "by_year": {
+      "2019": 30,
+      "2021": 15,
+      "2023": 11
+    },
+    "comparable": true,
+    "make": "Ram",
+    "model": "1500",
+    "per_year": 18.67,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Ram 2500 (Cummins)": {
+    "by_year": {
+      "2019": 12,
+      "2021": 8,
+      "2023": 8
+    },
+    "comparable": true,
+    "make": "Ram",
+    "model": "2500",
+    "per_year": 9.33,
+    "powertrain_years": [
+      2019,
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Subaru Ascent": {
+    "by_year": {
+      "2019": 9,
+      "2021": 2,
+      "2023": 4
+    },
+    "comparable": true,
+    "make": "Subaru",
+    "model": "Ascent",
+    "per_year": 5.0,
+    "powertrain_years": [
+      2019,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Subaru Forester": {
+    "by_year": {
+      "2019": 3,
+      "2023": 1
+    },
+    "comparable": false,
+    "make": "Subaru",
+    "model": "Forester",
+    "per_year": 2.0,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2021
+    ],
+    "years_requested": 3
+  },
+  "Subaru Outback": {
+    "by_year": {
+      "2019": 3,
+      "2021": 4,
+      "2023": 2
+    },
+    "comparable": true,
+    "make": "Subaru",
+    "model": "Outback",
+    "per_year": 3.0,
+    "powertrain_years": [
+      2021,
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Toyota 4Runner": {
+    "by_year": {
+      "2019": 4,
+      "2021": 1,
+      "2023": 1
+    },
+    "comparable": true,
+    "make": "Toyota",
+    "model": "4Runner",
+    "per_year": 2.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Toyota Highlander (gas)": {
+    "by_year": {
+      "2019": 3,
+      "2021": 4,
+      "2023": 9
+    },
+    "comparable": true,
+    "make": "Toyota",
+    "model": "Highlander",
+    "per_year": 5.33,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Toyota Highlander Hybrid": {
+    "by_year": {
+      "2021": 4,
+      "2023": 6
+    },
+    "comparable": false,
+    "make": "Toyota",
+    "model": "Highlander Hybrid",
+    "per_year": 5.0,
+    "powertrain_years": [],
+    "variant_query": true,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Toyota RAV4 (gas)": {
+    "by_year": {
+      "2019": 7,
+      "2021": 1,
+      "2023": 3
+    },
+    "comparable": true,
+    "make": "Toyota",
+    "model": "RAV4",
+    "per_year": 3.67,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Toyota RAV4 Hybrid": {
+    "by_year": {
+      "2019": 3,
+      "2021": 1,
+      "2023": 1
+    },
+    "comparable": false,
+    "make": "Toyota",
+    "model": "RAV4 Hybrid",
+    "per_year": 1.67,
+    "powertrain_years": [],
+    "variant_query": true,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Toyota Sequoia (pre-2023 5.7 V8)": {
+    "by_year": {
+      "2019": 6,
+      "2021": 2
+    },
+    "comparable": false,
+    "make": "Toyota",
+    "model": "Sequoia",
+    "per_year": 4.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2023
+    ],
+    "years_requested": 3
+  },
+  "Toyota Sienna Hybrid": {
+    "by_year": {
+      "2021": 2,
+      "2023": 1
+    },
+    "comparable": false,
+    "make": "Toyota",
+    "model": "Sienna Hybrid",
+    "per_year": 1.5,
+    "powertrain_years": [],
+    "variant_query": true,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Toyota Tacoma (pre-2024 V6)": {
+    "by_year": {
+      "2019": 4,
+      "2023": 4
+    },
+    "comparable": false,
+    "make": "Toyota",
+    "model": "Tacoma",
+    "per_year": 4.0,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2021
+    ],
+    "years_requested": 3
+  },
+  "Toyota Tundra (2007-2021 5.7 V8)": {
+    "by_year": {
+      "2019": 10,
+      "2021": 3,
+      "2023": 13
+    },
+    "comparable": true,
+    "make": "Toyota",
+    "model": "Tundra",
+    "per_year": 8.67,
+    "powertrain_years": [
+      2023
+    ],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  },
+  "Toyota Venza": {
+    "by_year": {
+      "2021": 1,
+      "2023": 1
+    },
+    "comparable": false,
+    "make": "Toyota",
+    "model": "Venza",
+    "per_year": 1.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 2,
+    "years_no_data": [
+      2019
+    ],
+    "years_requested": 3
+  },
+  "Volkswagen Atlas": {
+    "by_year": {
+      "2019": 11,
+      "2021": 17,
+      "2023": 5
+    },
+    "comparable": true,
+    "make": "Volkswagen",
+    "model": "Atlas",
+    "per_year": 11.0,
+    "powertrain_years": [],
+    "variant_query": false,
+    "years_answered": 3,
+    "years_no_data": [],
+    "years_requested": 3
+  }
+}
