@@ -42,6 +42,24 @@ function assertVariantShape(variant, models) {
   if (missing.length > 0) {
     throw new Error(`${variant}: fixture entries never compared: ${missing.join(', ')}`);
   }
+
+  /* Independence check. build.strip_for_oracle() is used BOTH by
+     freeze_fixture.py to generate the oracle variant and by test_build.py to
+     produce the dump checked against it, so a bug there would bake into
+     ground truth and its own checker symmetrically and still report a clean
+     1e-12 match. Asserting the property here -- rather than trusting the
+     function that produced both sides -- is what keeps the check honest.
+     See issue #18. */
+  if (variant === 'workbook_oracle') {
+    const leaked = models.filter(m => m.observedPrice !== null
+                                   && m.observedPrice !== undefined);
+    if (leaked.length > 0) {
+      throw new Error(
+        `workbook_oracle: observed prices were not stripped from ` +
+        `${leaked.map(m => m.name).join(', ')} -- the workbook figures were ` +
+        `computed on placeholder prices, so this variant must carry none`);
+    }
+  }
 }
 
 for (const variant of ['full', 'workbook_oracle']) {
