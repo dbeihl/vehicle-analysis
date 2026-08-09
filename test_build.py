@@ -87,6 +87,7 @@ def main():
 
     check_price_resolution()
     check_emitted_schema(real)
+    check_js_engine_parity(real)
     check_recall_status_classification()
     check_readme_counts(real)
 
@@ -114,6 +115,48 @@ def check_emitted_schema(rows):
         if m['observedPrice'] is not None:
             assert m['observedAt'], \
                 f'{m["name"]}: observedPrice without observedAt anchor'
+
+
+def check_js_engine_parity(rows):
+    """Run engine.js under Node against the frozen Python output.
+
+    The 11 workbook figures prove the formula; this proves the port. Both are
+    needed -- the workbook covers 11 of 79 vehicles at one input set.
+
+    A missing Node must fail rather than skip. A skipped check reads exactly
+    like a passing one.
+
+    Dumps two model arrays, not one. build_models() resolves buy_price into
+    the emitted 'price' field, so a vehicle with an observed price loses its
+    raw placeholder there -- nulling observedPrice on that dict client-side
+    cannot recover it. The workbook_oracle variant needs rows stripped of
+    observed_price *before* build_models runs, same as main()'s workbook
+    comparison, so its 'price' field is the true placeholder.
+    """
+    import json
+    import shutil
+    import subprocess
+    import tempfile
+
+    node = shutil.which('node')
+    assert node, ('node is required to test the cost engine and was not found. '
+                  'It is a development dependency only; the page ships without it.')
+
+    root = pathlib.Path(__file__).parent
+    stripped = [dict(r, msrp='', observed_price='') for r in rows]
+    dumped = {
+        'full': build.build_models(rows, build.INPUTS),
+        'workbook_oracle': build.build_models(stripped, build.INPUTS),
+    }
+    dump = root / 'build-models.json'
+    dump.write_text(json.dumps(dumped))
+    try:
+        r = subprocess.run([node, str(root / 'test_engine.mjs')],
+                           cwd=root, capture_output=True, text=True)
+    finally:
+        dump.unlink(missing_ok=True)
+    assert r.returncode == 0, f'JS engine parity failed:\n{r.stdout}{r.stderr}'
+    print(f'  {r.stdout.strip()}')
 
 
 def check_price_resolution():
