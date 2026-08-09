@@ -174,11 +174,14 @@ def check_price_resolution():
         dict(name='g', msrp_year='2026'),                               # orphaned msrp_year
         dict(name='h', msrp_trim='XLE'),                                # orphaned msrp_trim
         dict(name='i', msrp_source='KBB'),                              # orphaned msrp_source
+        dict(name='j', observed_price='1', price_year='2023',
+             price_source='x'),                                 # no anchor
     ]
     for row in rejected:
         assert build.price_problems([row]), f'gate accepted a bad row: {row}'
     assert not build.price_problems(
-        [dict(name='ok', observed_price='1', price_year='2023', price_source='x')])
+        [dict(name='ok', observed_price='1', price_year='2023', price_source='x',
+              observed_price_odometer='40000')])
 
 
 def check_recall_status_classification():

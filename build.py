@@ -60,6 +60,10 @@ def price_problems(rows):
                 problems.append(f'{name}: observed_price without price_year')
             if not v.get('price_source'):
                 problems.append(f'{name}: observed_price without price_source')
+            if not v.get('observed_price_odometer'):
+                problems.append(f'{name}: observed_price without '
+                                f'observed_price_odometer -- the mileage a price '
+                                f'was measured at is what lets the buy point move')
         else:
             # A placeholder carrying a year or a source claims provenance it does
             # not have. It would render identically to a verified row.

@@ -157,3 +157,29 @@ if (!frontierOk) {
   throw new Error(`frontier changed: ${[...frontier].sort()} != ${[...EXPECTED_FRONTIER].sort()}`);
 }
 console.log(`ok: balanced-six = ${winner} at ${winnerScore.toFixed(1)}, frontier = ${[...frontier].sort().join(', ')}`);
+
+/* Price scaling. An observed price is measured at one odometer reading;
+   moving the buy point must move the price along the retention curve, or the
+   page shows a 40,000-mile price against a 70,000-mile buy point. */
+const scaled = dumped.full.find(m => m.observedPrice);
+if (!scaled) throw new Error('no observed-price vehicle to test scaling against');
+
+const atAnchor = VA.buyPrice(scaled, inputs);
+if (atAnchor.price !== scaled.observedPrice || atAnchor.basis !== 'observed') {
+  throw new Error(`at its own anchor a price must be returned untouched and marked observed, got ${JSON.stringify(atAnchor)}`);
+}
+
+const moved = VA.buyPrice(scaled, { ...inputs, buy_odometer: 70000 });
+const expected = scaled.observedPrice
+  * VA.retentionIndex(70000, inputs.retention_anchors)
+  / VA.retentionIndex(scaled.observedAt, inputs.retention_anchors);
+if (Math.abs(moved.price - expected) > 1e-9) {
+  throw new Error(`scaled price ${moved.price} != ${expected}`);
+}
+if (moved.basis !== 'derived') {
+  throw new Error(`a scaled price must be marked derived, got ${moved.basis}`);
+}
+if (!(moved.price < scaled.observedPrice)) {
+  throw new Error('a higher-mileage buy point must cost less');
+}
+console.log('ok: observed prices scale along the retention curve');
