@@ -39,7 +39,21 @@ var VA = (function () {
   }
 
   function buyPrice(v, inp) {
-    if (v.observedPrice) return { price: v.observedPrice, basis: 'observed' };
+    if (v.observedPrice) {
+      /* Scale along this vehicle's own curve from a measured point. No
+         resaleMultiplier is involved -- that is what made the retired MSRP
+         derivation double-penalise fast-depreciating models. At the anchor
+         the ratio is exactly 1 and the observed figure passes through. */
+      /* Explicit null check, not truthiness: an anchor of 0 miles means the
+         price was observed new, and must still scale. */
+      if (v.observedAt !== null && v.observedAt !== undefined
+          && v.observedAt !== inp.buy_odometer) {
+        var ratio = retentionIndex(inp.buy_odometer, inp.retention_anchors)
+                  / retentionIndex(v.observedAt, inp.retention_anchors);
+        return { price: v.observedPrice * ratio, basis: 'derived' };
+      }
+      return { price: v.observedPrice, basis: 'observed' };
+    }
     return { price: v.price, basis: 'placeholder' };
   }
 

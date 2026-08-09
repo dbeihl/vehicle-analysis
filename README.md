@@ -62,7 +62,7 @@ Do not edit `price`. Add `observed_price` alongside it:
 
 `price` stays at its original value on purpose. `test_build.py` strips `observed_price` and re-runs the engine against that original figure to confirm the *formula* still matches the spreadsheet's published numbers. Overwrite `price` and you destroy the only check that is independent of this codebase.
 
-`observed_price` requires `price_year`, `price_source`, and `observed_price_odometer` (the odometer reading the price was observed at). Missing `price_year` or `price_source` fails `build.py`; missing `observed_price_odometer` fails `test_build.py` instead — either way, with the row named.
+`observed_price` requires `price_year`, `price_source`, and `observed_price_odometer` (the odometer reading the price was observed at). Missing any of the three fails `build.py`, with the row named.
 
 ## Where prices come from
 
@@ -81,6 +81,20 @@ Do not edit `price`. Add `observed_price` alongside it:
 `build.py` refuses to run if a price carries an incomplete provenance record. An unflagged placeholder reads exactly like a verified figure once it reaches the page.
 
 **4 of the 79 rows carry an observed price today.** Until that number is much higher, the ranking is biased toward whatever is still on a placeholder. A partially corrected dataset is more misleading than a uniformly wrong one: uniform error largely cancels in a ranking, and partial correction does not.
+
+## Adjusting the assumptions
+
+The eyebrow summary under the masthead is a button. Click it to open a panel where you can change eleven cost assumptions. The summary reads like `55,000 mi/yr · buy at 40k · sell at 180k · gas $3.55`, followed by a `change` prompt. When you edit any field, it appends `· edited` in teal so you can see at a glance that something differs from the defaults.
+
+The eleven fields are split into two groups, and the split is not cosmetic. The first eight can change which vehicle ranks highest, because each one multiplies against something that varies per vehicle: the two odometers interact with each vehicle's depreciation curve, annual mileage divides against the cost of capital (`capital * years / miles` reduces to `capital / annual_miles`, and capital scales with each vehicle's price), fuel prices divide by its MPG, and the two tire prices and tire life depend on whether it wears truck or crossover tires.
+
+The remaining three, labelled "Budget only", are maintenance per mile, insurance, and registration. Those are identical for every vehicle, so they shift all 79 costs per mile by the same constant. They change what the vehicle costs you; they cannot change which one wins.
+
+The panel validates as you type. Numbers must fall within published ranges. The buy odometer cannot equal or exceed the sell odometer in either direction; if you try, the field rejects the input and marks itself invalid.
+
+When you adjust the buy odometer, any observed price shifts with you. If a price was measured at a different mileage, the tool rescales it along that vehicle's own depreciation curve so the comparison stays honest. A price observed at a market listing is labelled `listed`. A price scaled to a different odometer is labelled `scaled`. An estimate carrying no source is labelled `estimate`.
+
+Clicking Reset restores all eleven assumption fields to their defaults. It does not reset the weight sliders, the category filter, or your selection. The view encodes into the URL fragment: changed inputs, weights, filter, and selection all persist when you share a link. The eleven input fields are all-or-nothing: if any one of them is malformed or out of range, none of them apply and the page loads at defaults, so a truncated or edited link can never half-apply. An unrecognised weight, filter, or selection key is simply dropped and the rest of the fragment still applies.
 
 ## The six axes are not equally trustworthy
 

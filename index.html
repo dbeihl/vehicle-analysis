@@ -19,6 +19,15 @@
            color:var(--ink2); line-height:1.5}
   h1{font-size:26px; font-weight:800; letter-spacing:-.025em; margin:6px 0 0; line-height:1.12}
   .masthead{border-bottom:2px solid var(--ink); padding-bottom:10px}
+  .summary{font:inherit; background:none; border:0; padding:0; cursor:pointer;
+           text-align:left; color:var(--ink2); text-decoration:underline;
+           text-decoration-color:var(--rule); text-underline-offset:3px}
+  .summary[data-dirty="true"]{color:var(--signal); font-weight:700}
+  .fields{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; padding:4px 13px 12px}
+  .fields label{display:block; font-size:11px; color:var(--ink2); margin-bottom:3px}
+  .fields input{width:100%; font-family:var(--mono); font-size:14px; padding:7px 8px;
+                border:1px solid var(--rule); background:var(--surface); color:var(--ink)}
+  .fields input[aria-invalid="true"]{border-color:var(--oxide); color:var(--oxide)}
   .lede{font-size:13.5px; color:var(--ink2); line-height:1.55; margin:12px 0 16px}
   .card{background:var(--surface); border:1px solid var(--rule); margin-bottom:14px}
   .cardhead{font-family:var(--mono); font-size:10px; letter-spacing:.13em; text-transform:uppercase;
@@ -46,6 +55,11 @@
   .meta{font-family:var(--mono); font-size:11px; color:var(--ink2); margin-bottom:6px; line-height:1.45}
   .prov{font-family:var(--mono); font-size:9px; letter-spacing:.06em; text-transform:uppercase;
         color:var(--ink3); font-weight:400; margin-left:4px}
+  .pbadge{font-family:var(--mono); font-size:9px; letter-spacing:.08em;
+        text-transform:uppercase; margin-left:6px; padding:2px 5px}
+  .pbadge-observed{background:var(--signalSoft); color:var(--signal)}
+  .pbadge-derived{background:#EFE3CC; color:var(--amber)}
+  .pbadge-placeholder{background:var(--ruleSoft); color:var(--ink3)}
   .bars{margin:0 0 10px}
   .barrow{display:flex; align-items:center; gap:8px; margin-bottom:5px}
   .bk{font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase;
@@ -77,8 +91,16 @@
 <div class="wrap">
 
   <div class="masthead">
-    <div class="eyebrow">55,000 mi/yr · buy at 40k · sell at 180k · Hamilton County, Indiana</div>
+    <button class="eyebrow summary" id="assumeToggle" aria-expanded="false" aria-controls="assumePanel"></button>
     <h1>Where the trade-offs stop trading</h1>
+  </div>
+
+  <div class="card" id="assumePanel" hidden>
+    <div class="cardhead"><span>Assumptions</span><button class="chip small" id="assumeReset">Reset</button></div>
+    <p class="fine" style="padding:0 13px 6px">These change what every number below says. The first group can change which vehicle wins; the second moves the cost without changing the order, because those figures are the same for every vehicle.</p>
+    <div class="fields" id="fieldsRank"></div>
+    <div class="cardhead"><span>Budget only</span></div>
+    <div class="fields" id="fieldsFlat"></div>
   </div>
 
   <p class="lede">
@@ -187,7 +209,21 @@ var VA = (function () {
   }
 
   function buyPrice(v, inp) {
-    if (v.observedPrice) return { price: v.observedPrice, basis: 'observed' };
+    if (v.observedPrice) {
+      /* Scale along this vehicle's own curve from a measured point. No
+         resaleMultiplier is involved -- that is what made the retired MSRP
+         derivation double-penalise fast-depreciating models. At the anchor
+         the ratio is exactly 1 and the observed figure passes through. */
+      /* Explicit null check, not truthiness: an anchor of 0 miles means the
+         price was observed new, and must still scale. */
+      if (v.observedAt !== null && v.observedAt !== undefined
+          && v.observedAt !== inp.buy_odometer) {
+        var ratio = retentionIndex(inp.buy_odometer, inp.retention_anchors)
+                  / retentionIndex(v.observedAt, inp.retention_anchors);
+        return { price: v.observedPrice * ratio, basis: 'derived' };
+      }
+      return { price: v.observedPrice, basis: 'observed' };
+    }
     return { price: v.price, basis: 'placeholder' };
   }
 
@@ -273,6 +309,169 @@ var KEYS=["cost","quality","longevity","efficiency","reliability","comfort"];
 
 var W=[25,15,15,10,20,15], FILT="all", PRESET="Balanced six", SEL=null;
 
+var DEFAULTS=JSON.parse(JSON.stringify(INPUTS));
+var FIELDS=[
+  {k:"annual_miles",       l:"Annual miles",        rank:true,  min:1000,  max:200000, step:1000},
+  {k:"buy_odometer",       l:"Buy odometer",        rank:true,  min:0,     max:250000, step:5000},
+  /* max is the retention curve's last anchor (see retention_anchors in
+     data/inputs.json). retentionIndex clamps flat past it, so a sell
+     odometer beyond 250000 would price resale off a flat line the curve
+     never actually measured. */
+  {k:"sell_odometer",      l:"Sell odometer",       rank:true,  min:1000,  max:250000, step:5000},
+  {k:"gas_per_gal",        l:"Gas $/gal",           rank:true,  min:1,     max:12,     step:0.05},
+  {k:"diesel_per_gal",     l:"Diesel $/gal",        rank:true,  min:1,     max:12,     step:0.05},
+  {k:"tire_set_crossover", l:"Tires, crossover $",  rank:true,  min:100,   max:5000,   step:50},
+  {k:"tire_set_truck",     l:"Tires, truck $",      rank:true,  min:100,   max:5000,   step:50},
+  {k:"tire_life_miles",    l:"Tire life, miles",    rank:true,  min:5000,  max:150000, step:5000},
+  {k:"scheduled_maint_per_mile", l:"Maintenance $/mi", rank:false, min:0,  max:1,      step:0.01},
+  {k:"insurance_per_year", l:"Insurance $/yr",      rank:false, min:0,     max:20000,  step:100},
+  {k:"registration_per_year", l:"Registration $/yr", rank:false, min:0,    max:5000,   step:25}
+];
+
+function fieldByKey(k){
+  for(var i=0;i<FIELDS.length;i++){if(FIELDS[i].k===k)return FIELDS[i]}
+  return null;
+}
+function fieldInRange(f,n){
+  return isFinite(n)&&n>=f.min&&n<=f.max;
+}
+function fieldValid(f,n){
+  if(!fieldInRange(f,n))return false;
+  /* A cycle must run forwards, or cycle miles go negative and every
+     per-mile figure inverts. */
+  if(f.k==="buy_odometer"&&n>=INPUTS.sell_odometer)return false;
+  if(f.k==="sell_odometer"&&n<=INPUTS.buy_odometer)return false;
+  return true;
+}
+var ODO_COUNTERPART={buy_odometer:"sell_odometer", sell_odometer:"buy_odometer"};
+function revalidateCounterpart(f){
+  /* Accepting a buy/sell edit can flip the OTHER field's validity without
+     that field's own input event ever firing. Leaving its old aria-invalid
+     state in place would let the panel show a value in black (or red) that
+     does not match what INPUTS -- and therefore the engine -- is using. */
+  var ck=ODO_COUNTERPART[f.k]; if(!ck)return;
+  var cf=fieldByKey(ck), cel=document.getElementById("f_"+ck);
+  if(!cf||!cel)return;
+  var n=parseFloat(cel.value);
+  if(fieldValid(cf,n)){
+    cel.removeAttribute("aria-invalid");
+    INPUTS[ck]=n;
+  }else{
+    cel.setAttribute("aria-invalid","true");
+  }
+}
+function applyInput(f,el){
+  var n=parseFloat(el.value);
+  if(!fieldValid(f,n)){el.setAttribute("aria-invalid","true");return false}
+  el.removeAttribute("aria-invalid");
+  INPUTS[f.k]=n;
+  revalidateCounterpart(f);
+  return true;
+}
+function inputsChanged(){
+  for(var i=0;i<FIELDS.length;i++){var k=FIELDS[i].k; if(INPUTS[k]!==DEFAULTS[k])return true}
+  return false;
+}
+function summaryText(){
+  return Math.round(INPUTS.annual_miles).toLocaleString()+" mi/yr · buy at "
+    +Math.round(INPUTS.buy_odometer/1000)+"k · sell at "
+    +Math.round(INPUTS.sell_odometer/1000)+"k · gas $"+INPUTS.gas_per_gal.toFixed(2)
+    +(inputsChanged()?" · edited":"")+" — change";
+}
+function drawFields(){
+  ["Rank","Flat"].forEach(function(g){
+    document.getElementById("fields"+g).innerHTML=FIELDS.filter(function(f){
+      return f.rank===(g==="Rank")}).map(function(f){
+      return '<div><label for="f_'+f.k+'">'+esc(f.l)+'</label>'
+        +'<input id="f_'+f.k+'" type="number" inputmode="decimal" step="'+f.step
+        +'" min="'+f.min+'" max="'+f.max+'" value="'+INPUTS[f.k]+'"></div>'}).join("");
+  });
+  FIELDS.forEach(function(f){
+    document.getElementById("f_"+f.k).addEventListener("input",function(e){
+      if(applyInput(f,e.target))render();
+    });
+  });
+}
+function writeHash(){
+  var p=[];
+  FIELDS.forEach(function(f){if(INPUTS[f.k]!==DEFAULTS[f.k])p.push(f.k+"="+INPUTS[f.k])});
+  if(W.join(",")!=="25,15,15,10,20,15")p.push("w="+W.join(","));
+  if(FILT!=="all")p.push("f="+FILT);
+  if(SEL)p.push("v="+encodeURIComponent(SEL));
+  var h=p.join("&");
+  history.replaceState(null,"",h?"#"+h:location.pathname);
+}
+function stagedFieldsValid(staged){
+  /* The odometer pair is checked against each other within the staged set,
+     never against live INPUTS -- INPUTS is still sitting at defaults while
+     this runs, so checking against it would just be checking against
+     defaults under a different name, and would not catch two staged values
+     that are individually in range but mutually incoherent. A key absent
+     from the fragment falls back to its default for this comparison only;
+     it is never written to INPUTS unless it was actually staged. */
+  for(var k in staged){
+    if(!staged.hasOwnProperty(k))continue;
+    var f=fieldByKey(k);
+    if(!f||!fieldInRange(f,staged[k]))return false;
+  }
+  var buy=staged.hasOwnProperty("buy_odometer")?staged.buy_odometer:DEFAULTS.buy_odometer;
+  var sell=staged.hasOwnProperty("sell_odometer")?staged.sell_odometer:DEFAULTS.sell_odometer;
+  return buy<sell;
+}
+function readHash(){
+  /* A malformed or stale link must land on the defaults rather than a
+     half-applied state. Anything unrecognised is dropped silently.
+
+     Input fields are staged into a plain object first and validated as one
+     set -- see stagedFieldsValid -- then applied to INPUTS only if the
+     whole set is coherent; a fragment with one bad field applies none of
+     them. w, f and v stay independent: each validates against a fixed,
+     known set of values that does not depend on the others, so applying
+     them one at a time cannot produce a half-applied state.
+
+     fieldsOk is the all-or-nothing gate for the assumption fields alone.
+     It starts true and is only ever set false, never back to true, so one
+     bad pair poisons the whole staged set even if a later duplicate of the
+     same key looks fine. Two things can trip it: a pair whose key names one
+     of the eleven FIELDS but whose value fails to decode, and a decoded
+     value that is not a complete, well-formed number (see the Number(v)
+     comment below). Whether a key names a field is knowable from k alone --
+     k is never percent-decoded in this fragment format, only the value half
+     is -- so that check runs before the decode attempt and works the same
+     whether decoding succeeds or throws. w, f and v are looked up by their
+     own literal (undecoded) key too, so a decode failure on one of those
+     pairs still just drops that pair via the catch's plain `return`,
+     independent of fieldsOk. */
+  var h=location.hash.replace(/^#/,""); if(!h)return;
+  var staged={};
+  var fieldsOk=true;
+  h.split("&").forEach(function(kv){
+    var i=kv.indexOf("="); if(i<0)return;
+    var k=kv.slice(0,i), raw=kv.slice(i+1), v, f=fieldByKey(k);
+    try{ v=decodeURIComponent(raw) }catch(e){ if(f)fieldsOk=false; return }
+    if(k==="w"){var a=v.split(",").map(Number);
+      if(a.length===6&&a.every(function(n){return isFinite(n)&&n>=0&&n<=100})){W=a;PRESET="Custom"}
+      return}
+    if(k==="f"){if(FILTERS.some(function(x){return x.k===v}))FILT=v; return}
+    if(k==="v"){if(MODELS.some(function(m){return m.name===v}))SEL=v; return}
+    if(f){
+      /* Number() requires the ENTIRE string to be a numeric literal, unlike
+         parseFloat which accepts a numeric prefix and silently ignores
+         trailing junk (parseFloat("55000oops")===55000). Number() also
+         coerces "" and whitespace-only strings to 0, so those are rejected
+         explicitly first -- an omitted value is not the same as zero.
+         Number() happily accepts the exponential notation writeHash can
+         itself emit for a very small in-range value (e.g. "1e-7"), so
+         legitimate links this page produces still round-trip. */
+      if(v===""||/^\s*$/.test(v)){fieldsOk=false}
+      else{var n=Number(v); if(!isFinite(n)){fieldsOk=false}else{staged[k]=n}}
+    }
+  });
+  if(fieldsOk&&stagedFieldsValid(staged)){
+    for(var k in staged){if(staged.hasOwnProperty(k))INPUTS[k]=staged[k]}
+  }
+}
+
 function passes(m,k){
   if(k==="all")return true;
   if(k==="heavy")return !!m.heavy;
@@ -292,6 +491,9 @@ function compute(){
     m.cpm=raw[i];
     m.peryr=raw[i]*INPUTS.annual_miles;
     m.cost=hi===lo?100:100*(hi-raw[i])/(hi-lo);
+    var bp=VA.buyPrice(m,INPUTS);
+    m.priceBasis=bp.basis;
+    m.price=bp.price;
   });
   var bad=MODELS.filter(function(m){return !isFinite(m.cpm)});
   if(bad.length){
@@ -371,7 +573,10 @@ function drawDetail(st){
   if(m.name===win.name)h+='<span class="badge" style="background:var(--ink);color:var(--surface)">TOP PICK</span>';
   h+='</div><div class="grid4">'+
     kv('Cost/mile','$'+m.cpm.toFixed(3))+kv('Per year','$'+Math.round(m.peryr).toLocaleString())+
-    kv('Buy price','$'+m.price.toLocaleString())+kv('Highway MPG',m.mpg.toFixed(1))+'</div>'+
+    kv('Buy price','$'+Math.round(m.price).toLocaleString()+
+      '<span class="pbadge pbadge-'+m.priceBasis+'">'+
+      (m.priceBasis==='observed'?'listed':m.priceBasis==='derived'?'scaled':'estimate')+
+      '</span>')+kv('Highway MPG',m.mpg.toFixed(1))+'</div>'+
     '<div class="bars">'+
       bar('Quality',m.quality)+bar('Longevity',m.longevity)+
       bar('Reliability',m.reliability)+bar('Comfort',m.comfort)+'</div>'+
@@ -412,6 +617,10 @@ function render(){
   Array.prototype.forEach.call(document.querySelectorAll('#filters .chip'),function(b){
     b.setAttribute('aria-pressed',b.dataset.k===FILT);
   });
+  var tog=document.getElementById("assumeToggle");
+  tog.textContent=summaryText();
+  tog.setAttribute("data-dirty",inputsChanged()?"true":"false");
+  writeHash();
 }
 
 // build controls
@@ -425,6 +634,9 @@ document.getElementById('sliders').innerHTML=AXES.map(function(a,i){
     '<input type="range" id="r'+i+'" min="0" max="100" value="'+W[i]+'" aria-label="'+a[0]+' weight">'+
     '<div class="hint">'+a[2]+'</div>'}).join('');
 
+function syncSliders(){
+  AXES.forEach(function(a,i){document.getElementById('r'+i).value=W[i]});
+}
 AXES.forEach(function(a,i){
   document.getElementById('r'+i).addEventListener('input',function(e){
     W[i]=+e.target.value; PRESET='Custom'; render();
@@ -434,7 +646,7 @@ document.getElementById('presets').addEventListener('click',function(e){
   var b=e.target.closest('.chip'); if(!b)return;
   var p=PRESETS.filter(function(x){return x.n===b.dataset.n})[0]; if(!p)return;
   W=p.w.slice(); PRESET=p.n;
-  AXES.forEach(function(a,i){document.getElementById('r'+i).value=W[i]});
+  syncSliders();
   render();
 });
 document.getElementById('filters').addEventListener('click',function(e){
@@ -447,6 +659,20 @@ document.getElementById('chart').addEventListener('click',function(e){
 document.getElementById('ranked').addEventListener('click',function(e){
   var b=e.target.closest('.rank'); if(!b)return; SEL=b.dataset.n; render();
 });
+document.getElementById("assumeToggle").addEventListener("click",function(){
+  var p=document.getElementById("assumePanel"), open=p.hidden;
+  p.hidden=!open; this.setAttribute("aria-expanded",open?"true":"false");
+});
+document.getElementById("assumeReset").addEventListener("click",function(){
+  FIELDS.forEach(function(f){INPUTS[f.k]=DEFAULTS[f.k];
+    var el=document.getElementById("f_"+f.k);
+    el.value=DEFAULTS[f.k]; el.removeAttribute("aria-invalid")});
+  syncSliders();
+  render();
+});
+readHash();
+syncSliders();
+drawFields();
 
 render();
 </script>

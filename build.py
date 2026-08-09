@@ -60,6 +60,12 @@ def price_problems(rows):
                 problems.append(f'{name}: observed_price without price_year')
             if not v.get('price_source'):
                 problems.append(f'{name}: observed_price without price_source')
+            # Explicit empty check, not truthiness: an anchor of 0 miles means
+            # the price was observed new, which is a real and usable datum.
+            if str(v.get('observed_price_odometer', '')).strip() == '':
+                problems.append(f'{name}: observed_price without '
+                                f'observed_price_odometer -- the mileage a price '
+                                f'was measured at is what lets the buy point move')
         else:
             # A placeholder carrying a year or a source claims provenance it does
             # not have. It would render identically to a verified row.
@@ -128,7 +134,9 @@ def build_models(rows, inp):
             'deprec5yr': float(v['deprec_5yr']),
             'tireClass': 'Truck' if v['tire_class'] == 'Truck' else 'Crossover',
             'observedPrice': float(v['observed_price']) if v.get('observed_price') else None,
-            'observedAt': float(v['observed_price_odometer']) if v.get('observed_price_odometer') else None,
+            'observedAt': (float(v['observed_price_odometer'])
+                           if str(v.get('observed_price_odometer', '')).strip() != ''
+                           else None),
             'quality': num(v['quality']), 'longevity': num(v['longevity']),
             'efficiency': scale(v['mpg'], mlo, mhi),
             'reliability': num(v['reliability']), 'comfort': num(v['comfort']),
