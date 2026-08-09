@@ -39,6 +39,7 @@ def main():
     problems = build.price_problems(real)
     assert not problems, 'price provenance incomplete:\n  ' + '\n  '.join(problems)
 
+    check_collapse_order()
     check_price_resolution()
     check_emitted_schema(real)
     check_row_keys(real)
@@ -248,6 +249,24 @@ def check_js_engine_parity(rows):
     finally:
         dump.unlink(missing_ok=True)
     assert r.returncode == 0, f'JS engine parity failed:\n{r.stdout}{r.stderr}'
+    print(f'  {r.stdout.strip()}')
+
+
+def check_collapse_order():
+    """Run the #27 regression test: frontier across all trims, then collapse.
+
+    Lives in Node because it exercises the shipped page logic, extracted from
+    index.html rather than reimplemented -- a reimplementation would only test
+    the copy.
+    """
+    import shutil
+    import subprocess
+    node = shutil.which('node')
+    assert node, 'node is required to test the collapse order and was not found'
+    root = pathlib.Path(__file__).parent
+    r = subprocess.run([node, str(root / 'test_collapse.mjs')],
+                       cwd=root, capture_output=True, text=True)
+    assert r.returncode == 0, f'collapse-order check failed:\n{r.stdout}{r.stderr}'
     print(f'  {r.stdout.strip()}')
 
 

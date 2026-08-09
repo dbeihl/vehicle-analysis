@@ -512,52 +512,57 @@ function compute(){
     o.value=Math.round(value*10)/10; o.total=Math.round(total*10)/10;
     return o;
   });
-  var collapsed=collapseByNameplate(scored);
-  var front=collapsed.filter(function(a){
-    return !collapsed.some(function(b){
+  /* Frontier FIRST, over every trim, then collapse for display. Collapsing
+     first was wrong: `total` is a weighted sum including cost while the
+     frontier is a Pareto test on (cost, value), so picking a representative
+     by `total` could hide an undominated trim and promote a vehicle that
+     trim had beaten. See issue #27. */
+  var undominated={};
+  scored.forEach(function(a){
+    var beaten=scored.some(function(b){
       return b!==a && b.cost>=a.cost && b.value>=a.value && (b.cost>a.cost||b.value>a.value);
     });
+    if(!beaten)undominated[a.key]=1;
   });
+  var collapsed=collapseByNameplate(scored,undominated);
+  var front=collapsed.filter(function(m){return m.onFront});
   front.sort(function(a,b){return a.cost-b.cost});
   var ranked=collapsed.slice().sort(function(a,b){return b.total-a.total});
   return {scored:collapsed,front:front,ranked:ranked};
 }
 
-function collapseByNameplate(list){
-  /* One point per nameplate until it is selected. 79 nameplates at three
-     trims each is 237 near-identical points, and the frontier would fill
-     with cross-tier comparisons -- a base Escalade beating a loaded
-     Highlander -- which describes nothing anyone shops. */
+function collapseByNameplate(list,undominated){
+  /* One dot per nameplate. 79 nameplates at three trims each is 237
+     near-identical points, and a chart of them communicates nothing.
+
+     The frontier is computed BEFORE this runs, across every trim, and the
+     result arrives in `undominated` keyed by row key. A nameplate is marked
+     onFront when any of its trims is undominated, and the representative
+     prefers such a trim so the dot shown is the one that earned the
+     position. That keeps the one-dot display while leaving the arithmetic
+     honest -- collapsing first could hide an undominated trim and promote a
+     vehicle that trim had beaten. See issue #27.
+
+     With every row at trim=unspecified each nameplate has exactly one trim,
+     so this is an identity transform today. */
   var by={}, order=[];
   for(var i=0;i<list.length;i++){
-    var m=list[i];
-    if(!by[m.name]){by[m.name]={rep:m,trims:[]}; order.push(m.name)}
-    by[m.name].trims.push(m);
-    /* The representative is the trim with the highest `total` (the weighted
-       sum, including cost). The frontier below is then computed over these
-       representatives, not over every trim -- and `total` is not the same
-       criterion as the frontier's Pareto test on (cost, value). A nameplate
-       can have an undominated trim on a different axis balance than the one
-       `total` picks: base at (cost 90, value 50) and loaded at (cost 70,
-       value 62) collapses to loaded because its total is higher, even though
-       base was the cheapest point on the chart and genuinely undominated.
-       Collapsing before the frontier is computed can therefore both hide an
-       undominated trim (base, above) and promote a dominated one (a third
-       vehicle at (75, 45), beaten on both axes by the base trim that just
-       vanished). This is inherent to representative-based collapsing, not a
-       bug in which representative gets picked -- no choice of representative
-       avoids it. The right semantics (representative-based, per-trim, or
-       per-tier) is unresolved and must be settled before real trim data
-       lands. With every row at trim=unspecified today, each nameplate has
-       exactly one trim, so this loop is an identity: `rep` is always that
-       trim and no reordering can occur yet. */
-    if(m.total>by[m.name].rep.total)by[m.name].rep=m;
+    var m=list[i], g=by[m.name];
+    if(!g){g=by[m.name]={rep:m,trims:[],onFront:false}; order.push(m.name)}
+    g.trims.push(m);
+    var mFront=!!(undominated&&undominated[m.key]);
+    if(mFront)g.onFront=true;
+    var repFront=!!(undominated&&undominated[g.rep.key]);
+    /* An undominated trim always outranks a dominated one; among equals,
+       the higher `total` wins. */
+    if((mFront&&!repFront)||(mFront===repFront&&m.total>g.rep.total))g.rep=m;
   }
   var out=[];
   for(var j=0;j<order.length;j++){
-    var g=by[order[j]], r=g.rep;
-    r.trimCount=g.trims.length;
-    r.trims=g.trims;
+    var gg=by[order[j]], r=gg.rep;
+    r.trimCount=gg.trims.length;
+    r.trims=gg.trims;
+    r.onFront=gg.onFront;
     out.push(r);
   }
   return out;
