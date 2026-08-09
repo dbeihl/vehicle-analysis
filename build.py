@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate the MODELS array in index.html from data/vehicles.csv.
 
-The CSV holds only observations and judgments. Everything the model computes --
-cost per mile, the 0-100 cost and efficiency axes -- is derived here, so adding
-a row means adding a row, not hand-recomputing nine columns in two places.
+The CSV holds only observations and judgments. Cost per mile and the 0-100
+cost axis are computed in the browser now, by engine.js -- this module still
+derives the 0-100 efficiency axis, so adding a row means adding a row, not
+hand-recomputing that column too.
 
     python3 build.py           rewrite index.html in place
     python3 build.py --check   verify index.html is up to date (exit 1 if not)
@@ -21,37 +22,10 @@ ROOT = pathlib.Path(__file__).parent
 INPUTS = json.loads((ROOT / 'data' / 'inputs.json').read_text())
 MARKER = 'const MODELS = '
 
-
-def retention_index(odometer, anchors):
-    """Linear interpolation over the odometer/median-price anchor table.
-
-    Depreciation!C21:C22. Indexed against the zero-mile anchor, so a vehicle at
-    0 miles is 1.0. Flat extrapolation past the ends of the table.
-    """
-    base = anchors[0][1]
-    if odometer <= anchors[0][0]:
-        return anchors[0][1] / base
-    for (x0, y0), (x1, y1) in zip(anchors, anchors[1:]):
-        if odometer <= x1:
-            span = (odometer - x0) / (x1 - x0)
-            return (y0 + span * (y1 - y0)) / base
-    return anchors[-1][1] / base
-
-
-def repair_reserve(inp):
-    """Repair dollars per mile, weighted by cycle miles in each band (Inputs!C29)."""
-    buy, sell = inp['buy_odometer'], inp['sell_odometer']
-    rates = inp['repair_reserve_per_mile']
-    bands = [(max(0, min(sell, 100000) - buy), rates['under_100k']),
-             (max(0, min(sell, 150000) - max(buy, 100000)), rates['100k_to_150k']),
-             (max(0, sell - max(buy, 150000)), rates['over_150k'])]
-    miles = sell - buy
-    return sum(m * r for m, r in bands) / miles
-
-
-def resale_multiplier(v, inp):
-    """Resale strength relative to the industry-average 5-year depreciation."""
-    return (1 - v['deprec_5yr']) / (1 - inp['industry_avg_5yr_deprec'])
+# Fields engine.js reads. Absence is a NaN in the browser, not an exception,
+# so test_build.py asserts every one of these reaches the page.
+REQUIRED_ENGINE_FIELDS = ('price', 'mpg', 'fuel', 'deprec5yr', 'tireClass',
+                          'observedPrice', 'observedAt')
 
 
 def buy_price(v, inp):
@@ -110,40 +84,6 @@ def price_problems(rows):
     return problems
 
 
-def cost_per_mile(v, inp):
-    """All-in dollars per mile over one ownership cycle. Mirrors Models!AB."""
-    miles = inp['sell_odometer'] - inp['buy_odometer']
-    years = miles / inp['annual_miles']
-    anchors = inp['retention_anchors']
-
-    price, _ = buy_price(v, inp)
-    resale_mult = resale_multiplier(v, inp)
-    ratio = (retention_index(inp['sell_odometer'], anchors)
-             / retention_index(inp['buy_odometer'], anchors))
-    resale = min(price, price * ratio * resale_mult)
-
-    fuel = (inp['diesel_per_gal'] if v['fuel'] == 'Diesel'
-            else inp['gas_per_gal']) / v['mpg']
-    tires = (inp['tire_set_truck'] if v['tire_class'] == 'Truck'
-             else inp['tire_set_crossover']) / inp['tire_life_miles']
-
-    if inp['financing_mode'] == 'cash':
-        capital = (price + resale) / 2 * inp['cash_opportunity_rate']
-    else:
-        financed = price * (1 - inp['down_payment_pct'])
-        capital = (financed * inp['avg_outstanding_balance_factor'] * inp['loan_apr']
-                   + price * inp['down_payment_pct'] * inp['cash_opportunity_rate'])
-
-    return ((price - resale) / miles                           # depreciation
-            + fuel + tires
-            + inp['scheduled_maint_per_mile']
-            + repair_reserve(inp)
-            + (inp['insurance_per_year'] + inp['registration_per_year'])
-            / inp['annual_miles']
-            + price * inp['sales_tax_rate'] / miles             # one-time, spread
-            + capital * years / miles)
-
-
 def num(x):
     """Drop the trailing .0 on whole numbers so 27.0 mpg serializes as 27."""
     return int(x) if float(x).is_integer() else float(x)
@@ -174,22 +114,21 @@ def load():
 
 
 def build_models(rows, inp):
-    cpms = [cost_per_mile(v, inp) for v in rows]
-    lo, hi = min(cpms), max(cpms)
     mpgs = [v['mpg'] for v in rows]
     mlo, mhi = min(mpgs), max(mpgs)
 
     out = []
-    for v, cpm in zip(rows, cpms):
+    for v in rows:
         price, basis = buy_price(v, inp)
         out.append({
             'name': v['name'], 'cat': v['category'], 'tier': v['tier'],
             'price': int(round(price)), 'priceBasis': basis,
             'priceYear': v.get('price_year') or '', 'mpg': num(v['mpg']), 'fuel': v['fuel'],
             'gvwr': v['gvwr_note'],
-            'cpm': round(cpm, 3),
-            'peryr': round(cpm * inp['annual_miles']),
-            'cost': scale(cpm, lo, hi, invert=True),
+            'deprec5yr': float(v['deprec_5yr']),
+            'tireClass': 'Truck' if v['tire_class'] == 'Truck' else 'Crossover',
+            'observedPrice': float(v['observed_price']) if v.get('observed_price') else None,
+            'observedAt': float(v['observed_price_odometer']) if v.get('observed_price_odometer') else None,
             'quality': num(v['quality']), 'longevity': num(v['longevity']),
             'efficiency': scale(v['mpg'], mlo, mhi),
             'reliability': num(v['reliability']), 'comfort': num(v['comfort']),
@@ -201,11 +140,85 @@ def build_models(rows, inp):
     return out
 
 
-def render(html, models):
-    start = html.index(MARKER)
-    end = html.index('];', start) + 2
+def strip_for_oracle(rows):
+    """Rows with observed_price and msrp cleared, before build_models runs.
+
+    The workbook's published figures were computed on the original
+    placeholder prices, so comparing against it requires nulling both columns
+    first -- build_models() resolves buy_price into the emitted 'price'
+    field, so stripping observedPrice from an already-built model cannot
+    recover the placeholder.
+    """
+    return [dict(r, msrp='', observed_price='') for r in rows]
+
+
+def dump_variants(rows, inp):
+    """The two model-array variants the JS engine test feeds to VA.costPerMile.
+
+    'full' is the real data; 'workbook_oracle' runs strip_for_oracle() first.
+    Shared by test_build.py's parity check and freeze_fixture.py's
+    regeneration so both hand the engine exactly the same input.
+    """
+    return {
+        'full': build_models(rows, inp),
+        'workbook_oracle': build_models(strip_for_oracle(rows), inp),
+    }
+
+
+ENGINE_START = '/* Cost engine.'
+
+
+def render(html, models, inputs, engine_src):
+    """Inline the engine, the inputs, and the raw rows into the page.
+
+    engine.js is a real source file so the Node test can import it directly
+    rather than scraping a <script> block out of the HTML. Inlining here is
+    what keeps the published page a single file with no dependencies.
+
+    Idempotent: the engine block is re-emitted on every build, so a repeat
+    build must replace the previously-inlined copy rather than stack another
+    one in front of it. `start` is found from the engine sentinel when
+    present, MARKER otherwise. `end` is always resolved from MARKER's own
+    position, searched forward from `start` -- engine.js contains a '];' of
+    its own (repairReserve's band array), so anchoring the search to MARKER
+    rather than to `start` keeps a rebuild from truncating mid-engine.
+
+    ENGINE_START has to actually be in engine.js, or the idempotency check
+    above silently stops finding the previously inlined copy -- `start` falls
+    back to MARKER and every build stacks another engine copy in front of the
+    last one instead of replacing it.
+    """
+    assert ENGINE_START in engine_src, (
+        f'engine.js no longer starts with {ENGINE_START!r} -- its header '
+        'comment changed, and build.py can no longer locate the inlined '
+        'block to replace it')
+    if ENGINE_START in html:
+        start = html.index(ENGINE_START)
+    else:
+        start = html.index(MARKER)
+    marker = html.index(MARKER, start)
+    end = html.index('];', marker) + 2
     payload = json.dumps(models, separators=(',', ':'), ensure_ascii=False)
-    return html[:start] + MARKER + payload + ';' + html[end:]
+    block = (engine_src.rstrip() + '\n'
+             + 'var INPUTS = ' + json.dumps(inputs, separators=(',', ':')) + ';\n'
+             + MARKER + payload + ';')
+    return html[:start] + block + html[end:]
+
+
+def render_current(rows):
+    """Render index.html from `rows` and the sources on disk right now.
+
+    Returns (on_disk_html, freshly_rendered_html, models). `--check` below and
+    test_build.py's stale-page guard both need "what does index.html look
+    like if we build it this instant" -- this is the one place that answers
+    that, so the two call paths cannot silently diverge into two different
+    ideas of what "up to date" means.
+    """
+    html = (ROOT / 'index.html').read_text()
+    engine_src = (ROOT / 'engine.js').read_text()
+    models = build_models(rows, INPUTS)
+    updated = render(html, models, INPUTS, engine_src)
+    return html, updated, models
 
 
 def main():
@@ -214,18 +227,14 @@ def main():
                     help='exit 1 if index.html is stale instead of rewriting it')
     args = ap.parse_args()
 
-    path = ROOT / 'index.html'
-    html = path.read_text()
     rows = load()
-
     problems = price_problems(rows)
     if problems:
         sys.exit('price provenance is incomplete:\n  '
                  + '\n  '.join(problems))
 
-    models = build_models(rows, INPUTS)
+    html, updated, models = render_current(rows)
     observed = sum(1 for m in models if m['priceBasis'] == 'observed')
-    updated = render(html, models)
 
     if args.check:
         if updated != html:
@@ -233,7 +242,7 @@ def main():
         print(f'index.html up to date ({len(models)} vehicles, '
               f'{observed} observed / {len(models) - observed} placeholder)')
         return
-    path.write_text(updated)
+    (ROOT / 'index.html').write_text(updated)
     print(f'wrote index.html ({len(models)} vehicles, '
           f'{observed} observed / {len(models) - observed} placeholder)')
 

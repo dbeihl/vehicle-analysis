@@ -1,1 +1,6 @@
 __pycache__/
+.superpowers/
+build-models.json
+freeze-fixture-models.json
+freeze-fixture-cpm.json
+freeze-fixture-gen.js

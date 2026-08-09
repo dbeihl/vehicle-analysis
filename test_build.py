@@ -1,99 +1,144 @@
 #!/usr/bin/env python3
-"""Check the cost engine against figures the workbook published independently.
+"""Check build.py's data pipeline and, via Node, the JS cost engine against
+figures the workbook published independently.
 
 Run: python3 test_build.py
 
-These dollars-per-mile numbers come off the StrategyMatrix and Scoring tabs of
+The dollars-per-mile numbers come off the StrategyMatrix and Scoring tabs of
 vehicle-turnover-planner.xlsx, computed there by ~3,170 spreadsheet formulas.
-build.py recomputes them from the raw retention anchors. If the two ever
-disagree, one of them has drifted -- which is the whole reason this file exists.
+engine.js is the only cost engine now -- check_js_engine_parity() shells out
+to Node, which checks the workbook's published figures, the balanced-six
+winner, and the efficient frontier against VA.costPerMile (see
+test_engine.mjs). If the two ever disagree, one of them has drifted -- which
+is the whole reason this check exists.
 """
 import pathlib
 import re
 
 import build
 
-# name -> $/mile, as published on StrategyMatrix (col L) and Scoring (col D).
-PUBLISHED_CPM = {
-    'Honda HR-V': 0.426,
-    'Ford Escape Hybrid': 0.441,
-    'Toyota Venza': 0.457,
-    'Nissan Rogue': 0.459,
-    'Ford Maverick Hybrid': 0.460,
-    'Toyota Highlander Hybrid': 0.517,
-    'Honda Ridgeline': 0.519,
-    'Toyota Grand Highlander Hybrid': 0.580,
-    'Chevrolet Tahoe': 0.674,
-    'Chevrolet Tahoe 3.0L Duramax': 0.703,
-    'Toyota Sequoia (pre-2023 5.7 V8)': 0.717,
-}
-
-# StrategyMatrix "Balanced six": winner and score.
-BALANCED = {'cost': 25, 'quality': 15, 'longevity': 15,
-            'efficiency': 10, 'reliability': 20, 'comfort': 15}
-EXPECTED_WINNER, EXPECTED_SCORE = 'Toyota Highlander Hybrid', 89.9
-
-# The four the page reports undominated at those weights. Everything else is
-# beaten on both cost and value by something on this list.
-EXPECTED_FRONTIER = {'Toyota Highlander Hybrid', 'Toyota Venza',
-                     'Ford Escape Hybrid', 'Honda HR-V'}
-
 
 def main():
-    # Validate the ENGINE against the workbook, not the data. The workbook was
-    # built on the original placeholder prices, so rows since repriced from a
-    # verified MSRP will legitimately disagree. Stripping msrp here keeps this
-    # check meaningful: it fails on formula drift, not on intentional data edits.
-    rows = [dict(r, msrp='', observed_price='') for r in build.load()]
-    models = {m['name']: m for m in build.build_models(rows, build.INPUTS)}
-
-    for name, expected in PUBLISHED_CPM.items():
-        assert name in models, f'{name} missing from data/vehicles.csv'
-        got = models[name]['cpm']
-        assert abs(got - expected) < 0.001, \
-            f'{name}: workbook says {expected}/mi, build.py computes {got}/mi'
-
-    ranked = sorted(
-        ((sum(w * models[n][k] for k, w in BALANCED.items()) / 100, n)
-         for n in models), reverse=True)
-    score, winner = ranked[0]
-    assert winner == EXPECTED_WINNER, \
-        f'balanced-six winner is {winner}, workbook says {EXPECTED_WINNER}'
-    assert abs(score - EXPECTED_SCORE) < 0.05, \
-        f'balanced-six score {score:.1f}, workbook says {EXPECTED_SCORE}'
-
-    # Reproduce the frontier the page draws: cost against the weighted value of
-    # the other five axes. Asserting the frontier is merely non-empty proves
-    # nothing -- the cheapest vehicle is undominated by construction.
-    value_axes = {k: w for k, w in BALANCED.items() if k != 'cost'}
-    total = sum(value_axes.values())
-    for m in models.values():
-        m['value'] = sum(w * m[k] for k, w in value_axes.items()) / total
-
-    frontier = {m['name'] for m in models.values()
-                if not any(o is not m and o['cost'] >= m['cost']
-                           and o['value'] >= m['value']
-                           and (o['cost'] > m['cost'] or o['value'] > m['value'])
-                           for o in models.values())}
-    assert frontier == EXPECTED_FRONTIER, \
-        f'frontier changed: {sorted(frontier)} != {sorted(EXPECTED_FRONTIER)}'
-
-    # Price provenance, checked against the real rows rather than the stripped
-    # ones. A price with no recorded year, source, or trim is indistinguishable
-    # from a verified one by the time it reaches the page.
+    # Price provenance, checked against the real rows. A price with no
+    # recorded year, source, or trim is indistinguishable from a verified
+    # one by the time it reaches the page.
     real = build.load()
     problems = build.price_problems(real)
     assert not problems, 'price provenance incomplete:\n  ' + '\n  '.join(problems)
 
     check_price_resolution()
+    check_emitted_schema(real)
+    check_page_up_to_date(real)
+    check_js_engine_parity(real)
     check_recall_status_classification()
     check_readme_counts(real)
 
     observed = sum(1 for r in real if r.get('observed_price'))
-    print(f'ok: {len(PUBLISHED_CPM)} published $/mile figures match, '
-          f'balanced-six = {winner} at {score:.1f}, '
-          f'{observed} observed / {len(real) - observed} placeholder '
-          f'({len(models)} vehicles)')
+    print(f'ok: {observed} observed / {len(real) - observed} placeholder '
+          f'({len(real)} vehicles)')
+
+
+def check_emitted_schema(rows):
+    """Every field the JS engine reads must reach the page.
+
+    Python raises KeyError on a missing field. JS computes undefined * 2 = NaN
+    and renders a broken chart with no error, so absence has to be caught here.
+    """
+    models = build.build_models(rows, build.INPUTS)
+    for m in models:
+        missing = [f for f in build.REQUIRED_ENGINE_FIELDS if f not in m]
+        assert not missing, f'{m["name"]}: emitted row lacks {missing}'
+        assert isinstance(m['deprec5yr'], float), \
+            f'{m["name"]}: deprec5yr must be numeric, got {m["deprec5yr"]!r}'
+        assert m['tireClass'] in ('Truck', 'Crossover'), \
+            f'{m["name"]}: unexpected tireClass {m["tireClass"]!r}'
+        if m['observedPrice'] is not None:
+            assert m['observedAt'], \
+                f'{m["name"]}: observedPrice without observedAt anchor'
+        # cost, peryr, and cpm are computed in the browser now (VA.costPerMile
+        # at the head of compute()). A baked-in value here would mean Python
+        # silently started shipping stale cost figures again, defeating the
+        # point of moving the computation to INPUTS + engine.js.
+        baked_in = [f for f in ('cpm', 'peryr', 'cost') if f in m]
+        assert not baked_in, \
+            f'{m["name"]}: cost fields must be computed client-side, not emitted: {baked_in}'
+
+
+def check_page_up_to_date(rows):
+    """index.html on disk must be exactly what build.py would generate now.
+
+    Every other check in this file runs against freshly generated dumps --
+    engine.js invoked directly, models built straight from the CSV. None of
+    that touches the committed index.html, so a hand-edit or a stale build
+    committed by accident ships green anyway: the published page is the
+    product, and nothing above proves the product matches the source.
+
+    build.py --check already does this exact comparison; reuse it via
+    build.render_current() rather than re-deriving "up to date" a second way
+    that could quietly drift from the first.
+    """
+    html, updated, _ = build.render_current(rows)
+    assert updated == html, (
+        'index.html does not match what build.py would generate from the '
+        'current sources -- run: python3 build.py')
+
+
+def check_js_engine_parity(rows):
+    """Run engine.js under Node against the frozen Python output.
+
+    The 11 workbook figures prove the formula; this proves the port. Both are
+    needed -- the workbook covers 11 of 79 vehicles at one input set.
+
+    A missing Node must fail rather than skip. A skipped check reads exactly
+    like a passing one.
+
+    Dumps two model arrays, not one, via build.dump_variants(). build_models()
+    resolves buy_price into the emitted 'price' field, so a vehicle with an
+    observed price loses its raw placeholder there -- nulling observedPrice
+    on that dict client-side cannot recover it. The workbook_oracle variant
+    needs rows stripped of observed_price *before* build_models runs, same as
+    main()'s workbook comparison, so its 'price' field is the true
+    placeholder.
+    """
+    import json
+    import shutil
+    import subprocess
+
+    node = shutil.which('node')
+    assert node, ('node is required to test the cost engine and was not found. '
+                  'It is a development dependency only; the page ships without it.')
+
+    root = pathlib.Path(__file__).parent
+
+    # data/inputs.json can drift from the inputs the fixture was frozen at
+    # with this whole suite still green, because the model dump built below
+    # is inputs-independent -- nothing else compares them. A drifted input
+    # set makes every downstream "ok" claim false about the actual page.
+    fixture = json.loads((root / 'data' / 'engine-fixture.json').read_text())
+    assert fixture['_inputs'] == build.INPUTS, (
+        'data/inputs.json has drifted from the inputs the oracle was frozen '
+        'at -- regenerate data/engine-fixture.json with `python3 '
+        'freeze_fixture.py`')
+
+    dumped = build.dump_variants(rows, build.INPUTS)
+    # build_models() is 1:1 per row, so a short dump means something upstream
+    # silently dropped vehicles. Without this, an empty dump still exits 0 --
+    # node has nothing to iterate and prints "ok: 0 comparisons" -- which is
+    # exactly the "assertion that could never fail" shape this file exists to
+    # avoid elsewhere.
+    assert len(dumped['full']) == len(rows), \
+        f"full: dumped {len(dumped['full'])} models, expected {len(rows)}"
+    assert len(dumped['workbook_oracle']) == len(rows), \
+        f"workbook_oracle: dumped {len(dumped['workbook_oracle'])} models, expected {len(rows)}"
+    dump = root / 'build-models.json'
+    dump.write_text(json.dumps(dumped))
+    try:
+        r = subprocess.run([node, str(root / 'test_engine.mjs')],
+                           cwd=root, capture_output=True, text=True)
+    finally:
+        dump.unlink(missing_ok=True)
+    assert r.returncode == 0, f'JS engine parity failed:\n{r.stdout}{r.stderr}'
+    print(f'  {r.stdout.strip()}')
 
 
 def check_price_resolution():
