@@ -47,6 +47,17 @@ def main():
     rows = [dict(r, msrp='', observed_price='') for r in build.load()]
     models = {m['name']: m for m in build.build_models(rows, build.INPUTS)}
 
+    # build_models() no longer bakes cpm/cost into the emitted dict -- that
+    # computation moved to the browser (VA.costPerMile). This suite still
+    # validates the Python formula directly against the workbook, so recompute
+    # cpm/cost here from build.cost_per_mile(), same as build_models() used
+    # to do internally, without changing what the page ships.
+    cpms = {v['name']: build.cost_per_mile(v, build.INPUTS) for v in rows}
+    lo, hi = min(cpms.values()), max(cpms.values())
+    for m in models.values():
+        m['cpm'] = cpms[m['name']]
+        m['cost'] = build.scale(m['cpm'], lo, hi, invert=True)
+
     for name, expected in PUBLISHED_CPM.items():
         assert name in models, f'{name} missing from data/vehicles.csv'
         got = models[name]['cpm']
@@ -115,6 +126,13 @@ def check_emitted_schema(rows):
         if m['observedPrice'] is not None:
             assert m['observedAt'], \
                 f'{m["name"]}: observedPrice without observedAt anchor'
+        # cost, peryr, and cpm are computed in the browser now (VA.costPerMile
+        # at the head of compute()). A baked-in value here would mean Python
+        # silently started shipping stale cost figures again, defeating the
+        # point of moving the computation to INPUTS + engine.js.
+        baked_in = [f for f in ('cpm', 'peryr', 'cost') if f in m]
+        assert not baked_in, \
+            f'{m["name"]}: cost fields must be computed client-side, not emitted: {baked_in}'
 
 
 def check_js_engine_parity(rows):

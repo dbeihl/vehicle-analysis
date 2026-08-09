@@ -179,13 +179,11 @@ def load():
 
 
 def build_models(rows, inp):
-    cpms = [cost_per_mile(v, inp) for v in rows]
-    lo, hi = min(cpms), max(cpms)
     mpgs = [v['mpg'] for v in rows]
     mlo, mhi = min(mpgs), max(mpgs)
 
     out = []
-    for v, cpm in zip(rows, cpms):
+    for v in rows:
         price, basis = buy_price(v, inp)
         out.append({
             'name': v['name'], 'cat': v['category'], 'tier': v['tier'],
@@ -196,9 +194,6 @@ def build_models(rows, inp):
             'tireClass': 'Truck' if v['tire_class'] == 'Truck' else 'Crossover',
             'observedPrice': float(v['observed_price']) if v.get('observed_price') else None,
             'observedAt': float(v['observed_price_odometer']) if v.get('observed_price_odometer') else None,
-            'cpm': round(cpm, 3),
-            'peryr': round(cpm * inp['annual_miles']),
-            'cost': scale(cpm, lo, hi, invert=True),
             'quality': num(v['quality']), 'longevity': num(v['longevity']),
             'efficiency': scale(v['mpg'], mlo, mhi),
             'reliability': num(v['reliability']), 'comfort': num(v['comfort']),
@@ -210,11 +205,35 @@ def build_models(rows, inp):
     return out
 
 
-def render(html, models):
-    start = html.index(MARKER)
-    end = html.index('];', start) + 2
+ENGINE_START = '/* Cost engine.'
+
+
+def render(html, models, inputs, engine_src):
+    """Inline the engine, the inputs, and the raw rows into the page.
+
+    engine.js is a real source file so the Node test can import it directly
+    rather than scraping a <script> block out of the HTML. Inlining here is
+    what keeps the published page a single file with no dependencies.
+
+    Idempotent: the engine block is re-emitted on every build, so a repeat
+    build must replace the previously-inlined copy rather than stack another
+    one in front of it. `start` is found from the engine sentinel when
+    present, MARKER otherwise. `end` is always resolved from MARKER's own
+    position, searched forward from `start` -- engine.js contains a '];' of
+    its own (repairReserve's band array), so anchoring the search to MARKER
+    rather than to `start` keeps a rebuild from truncating mid-engine.
+    """
+    if ENGINE_START in html:
+        start = html.index(ENGINE_START)
+    else:
+        start = html.index(MARKER)
+    marker = html.index(MARKER, start)
+    end = html.index('];', marker) + 2
     payload = json.dumps(models, separators=(',', ':'), ensure_ascii=False)
-    return html[:start] + MARKER + payload + ';' + html[end:]
+    block = (engine_src.rstrip() + '\n'
+             + 'const INPUTS = ' + json.dumps(inputs, separators=(',', ':')) + ';\n'
+             + MARKER + payload + ';')
+    return html[:start] + block + html[end:]
 
 
 def main():
@@ -226,6 +245,7 @@ def main():
     path = ROOT / 'index.html'
     html = path.read_text()
     rows = load()
+    engine_src = (ROOT / 'engine.js').read_text()
 
     problems = price_problems(rows)
     if problems:
@@ -234,7 +254,7 @@ def main():
 
     models = build_models(rows, INPUTS)
     observed = sum(1 for m in models if m['priceBasis'] == 'observed')
-    updated = render(html, models)
+    updated = render(html, models, INPUTS, engine_src)
 
     if args.check:
         if updated != html:
