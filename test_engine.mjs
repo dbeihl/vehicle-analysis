@@ -14,6 +14,13 @@ const fixture = JSON.parse(readFileSync('./data/engine-fixture.json', 'utf8'));
 const inputs = fixture._inputs;
 const dumped = JSON.parse(readFileSync('./build-models.json', 'utf8'));
 
+/* The workbook has no reliability term. Every assertion below that derives
+   from the spreadsheet -- the frozen oracle variant, the 11 published
+   figures, the balanced-six winner, the frontier -- runs at a neutral
+   spread, mirroring build.oracle_inputs() on the Python side. */
+const ORACLE_INPUTS = { ...inputs, repair_cost_spread_ratio: 1 };
+const INPUTS_FOR = { full: inputs, workbook_oracle: ORACLE_INPUTS };
+
 const TOL = 1e-12;
 let checked = 0, worst = -Infinity, worstName = '';
 
@@ -75,9 +82,18 @@ for (const variant of ['full', 'workbook_oracle']) {
   for (const v of models) {
     const expected = fixture[variant][v.key];
     if (!expected) throw new Error(`fixture has no ${variant} entry for ${v.name}`);
-    const got = VA.costPerMile(v, inputs);
+    const got = VA.costPerMile(v, INPUTS_FOR[variant]);
     if (!Number.isFinite(got)) throw new Error(`${v.name} (${variant}): got ${got}`);
     const delta = Math.abs(got - expected.cpm);
+    /* The oracle variant is frozen at a neutral spread, and multiplying by
+       exactly 1.0 is exact in IEEE-754. So this variant must match to the
+       bit, not to a tolerance -- any drift at all means the multiplier is
+       not neutral at 1 and every workbook assertion below is running
+       against a formula the spreadsheet never implemented. */
+    if (variant === 'workbook_oracle' && delta !== 0) {
+      throw new Error(`${v.name}: neutral spread moved the figure by ${delta} -- `
+        + `it must be bit-for-bit identical`);
+    }
     if (delta > worst) { worst = delta; worstName = `${v.name} (${variant})`; }
     if (delta > TOL) {
       throw new Error(
@@ -111,7 +127,7 @@ const PUBLISHED = {
 for (const [key, expected] of Object.entries(PUBLISHED)) {
   const m = models.find(x => x.key === key);
   if (!m) throw new Error(`${key} missing from the dataset`);
-  const got = VA.costPerMile({ ...m, observedPrice: null }, inputs);
+  const got = VA.costPerMile({ ...m, observedPrice: null }, ORACLE_INPUTS);
   if (Math.abs(got - expected) >= 0.001) {
     throw new Error(`${key}: workbook says ${expected}/mi, engine computes ${got}`);
   }
@@ -140,7 +156,7 @@ const EXPECTED_FRONTIER = new Set([
   'Ford Escape Hybrid|unspecified', 'Honda HR-V|unspecified'
 ]);
 
-const cpms = models.map(m => VA.costPerMile(m, inputs));
+const cpms = models.map(m => VA.costPerMile(m, ORACLE_INPUTS));
 const lo = Math.min(...cpms), hi = Math.max(...cpms);
 const scored = models.map((m, i) => Object.assign({}, m, { cost: scale(cpms[i], lo, hi, true) }));
 
@@ -178,6 +194,72 @@ if (!frontierOk) {
 }
 console.log(`ok: balanced-six = ${winner} at ${winnerScore.toFixed(1)}, frontier = ${[...frontier].sort().join(', ')}`);
 
+/* CHARACTERIZATION PIN -- NOT AN ORACLE.
+   Everything above runs on workbook_oracle at a neutral spread, which is
+   what makes it independent of this codebase. That leaves the ranking the
+   page actually ships -- the 'full' variant at the live ratio in
+   data/inputs.json -- asserted by nothing at all: the multiplier could be
+   dropped, doubled, or inverted and every assertion above would stay green.
+
+   So these constants were produced by RUNNING this code, not by any outside
+   source. They record what the model does today. When the model changes on
+   purpose -- the ratio moves, engine.js changes, a vehicle's data is
+   corrected -- these are expected to change: rerun, update them
+   deliberately, and say so in the commit. That is the opposite of the
+   workbook figures above, which are ground truth and must never be edited
+   to make a failing engine pass. A diff here is not proof of a bug; it is
+   proof that the shipped ranking moved, which is what nothing was
+   reporting before. */
+const LIVE_WINNER = 'Toyota Highlander Hybrid';
+const LIVE_SCORE = 89.2;
+const LIVE_FRONTIER = new Set([
+  'Ford Escape Hybrid|unspecified', 'Ford Maverick Hybrid|unspecified',
+  'Honda HR-V|unspecified', 'Toyota Highlander Hybrid|unspecified',
+  'Toyota RAV4 Hybrid|unspecified', 'Toyota Venza|unspecified'
+]);
+
+// Reuses scale(), BALANCED, valueAxes and valueTotal above -- same axes, same
+// order of operations as index.html's compute(). The only differences from
+// the oracle block are the variant (full, observed prices intact) and the
+// inputs (live, so the spread ratio is whatever data/inputs.json ships).
+const liveModels = dumped.full;
+const liveCpms = liveModels.map(m => VA.costPerMile(m, INPUTS_FOR.full));
+const liveLo = Math.min(...liveCpms), liveHi = Math.max(...liveCpms);
+const liveScored = liveModels.map((m, i) =>
+  Object.assign({}, m, { cost: scale(liveCpms[i], liveLo, liveHi, true) }));
+
+let liveWinner = null, liveWinnerScore = -Infinity;
+for (const m of liveScored) {
+  const s = Object.keys(BALANCED).reduce((sum, k) => sum + BALANCED[k] * m[k], 0) / 100;
+  if (s > liveWinnerScore) { liveWinnerScore = s; liveWinner = m.name; }
+}
+if (liveWinner !== LIVE_WINNER) {
+  throw new Error(`the shipped balanced-six winner is now ${liveWinner}, pinned at `
+    + `${LIVE_WINNER}. If the model changed on purpose, rerun and repin`);
+}
+if (Math.abs(liveWinnerScore - LIVE_SCORE) >= 0.05) {
+  throw new Error(`the shipped balanced-six score is now ${liveWinnerScore.toFixed(1)}, `
+    + `pinned at ${LIVE_SCORE}. If the model changed on purpose, rerun and repin`);
+}
+
+for (const m of liveScored) {
+  m.value = valueAxes.reduce((s, k) => s + BALANCED[k] * m[k], 0) / valueTotal;
+}
+const liveFrontier = new Set(
+  liveScored.filter(m => !liveScored.some(o =>
+    o !== m && o.cost >= m.cost && o.value >= m.value &&
+    (o.cost > m.cost || o.value > m.value)
+  )).map(m => m.key)
+);
+const liveFrontierOk = liveFrontier.size === LIVE_FRONTIER.size &&
+  [...liveFrontier].every(n => LIVE_FRONTIER.has(n));
+if (!liveFrontierOk) {
+  throw new Error(`the shipped frontier is now ${[...liveFrontier].sort()}, pinned at `
+    + `${[...LIVE_FRONTIER].sort()}. If the model changed on purpose, rerun and repin`);
+}
+console.log(`ok: shipped ranking pinned at ratio ${INPUTS_FOR.full.repair_cost_spread_ratio} `
+  + `= ${liveWinner} at ${liveWinnerScore.toFixed(1)}, frontier of ${liveFrontier.size}`);
+
 /* Price scaling. An observed price is measured at one odometer reading;
    moving the buy point must move the price along the retention curve, or the
    page shows a 40,000-mile price against a 70,000-mile buy point. */
@@ -203,3 +285,50 @@ if (!(moved.price < scaled.observedPrice)) {
   throw new Error('a higher-mileage buy point must cost less');
 }
 console.log('ok: observed prices scale along the retention curve');
+
+/* The multiplier's shape, pinned at five points. Neutral is 1, not 0:
+   Math.pow(0, x) is 0 or Infinity, which would destroy the engine rather
+   than turn the feature off. */
+const MULT_CASES = [
+  { ratio: 1,    reliability: 0,   want: 1 },
+  { ratio: 1,    reliability: 100, want: 1 },
+  { ratio: 2.66, reliability: 50,  want: 1 },
+  { ratio: 2.66, reliability: 100, want: 1 / Math.sqrt(2.66) },
+  { ratio: 2.66, reliability: 0,   want: Math.sqrt(2.66) },
+];
+for (const c of MULT_CASES) {
+  const got = VA.repairMultiplier({ reliability: c.reliability },
+                                  { repair_cost_spread_ratio: c.ratio });
+  if (Math.abs(got - c.want) > 1e-12) {
+    throw new Error(`repairMultiplier at ratio ${c.ratio}, reliability `
+      + `${c.reliability}: got ${got}, want ${c.want}`);
+  }
+}
+/* The ratio IS the worst-to-best spread across the full 0-100 scale. If the
+   exponent's divisor drifts from 100 this is the assertion that catches it. */
+const best = VA.repairMultiplier({ reliability: 100 }, { repair_cost_spread_ratio: 2.66 });
+const worstRel = VA.repairMultiplier({ reliability: 0 }, { repair_cost_spread_ratio: 2.66 });
+if (Math.abs(worstRel / best - 2.66) > 1e-12) {
+  throw new Error(`worst/best spread is ${worstRel / best}, want the ratio itself, 2.66`);
+}
+console.log('ok: repair multiplier is neutral at 1 and spans the ratio at 2.66');
+
+/* Wiring check. Every assertion above calls VA.repairMultiplier() directly, or
+   runs costPerMile at ratio 1 where the multiplier is identically 1 for every
+   reliability -- so deleting "* repairMultiplier(v, inp)" from costPerMile's
+   sum would leave every one of them green. This is the one assertion that
+   moves the ratio off 1 on a vehicle whose reliability isn't 50, so the
+   multiplier is not 1 and its presence in the sum is actually observable. */
+const wired = dumped.full.find(m => m.reliability !== 50);
+if (!wired) throw new Error('no full-variant vehicle with reliability !== 50 to test wiring against');
+const wiredNeutral = { ...inputs, repair_cost_spread_ratio: 1 };
+const wiredTest = { ...inputs, repair_cost_spread_ratio: 2 };
+const atNeutral = VA.costPerMile(wired, wiredNeutral);
+const atTestRatio = VA.costPerMile(wired, wiredTest);
+const wiredExpected = VA.repairReserve(inputs) * (VA.repairMultiplier(wired, wiredTest) - 1);
+if (Math.abs((atTestRatio - atNeutral) - wiredExpected) > 1e-12) {
+  throw new Error(`${wired.name}: costPerMile moved by ${atTestRatio - atNeutral} when the `
+    + `spread ratio changed from 1 to 2, expected ${wiredExpected} -- repairMultiplier is `
+    + `computed but not wired into costPerMile's sum`);
+}
+console.log('ok: repairMultiplier is wired into costPerMile\'s sum, not just callable standalone');

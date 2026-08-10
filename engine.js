@@ -34,6 +34,21 @@ var VA = (function () {
     return total / (sell - buy);
   }
 
+  function repairMultiplier(v, inp) {
+    /* Geometric around reliability 50, with the exponent over the full
+       0-100 scale, so inp.repair_cost_spread_ratio IS the worst-to-best
+       ratio -- there is no second constant to keep in sync with it.
+
+       Neutral is 1, not 0. Math.pow(0, x) returns 0 or Infinity and takes
+       every cost per mile with it, which is worth stating because every
+       other assumption in this model turns off at zero.
+
+       Anchored at reliability 50 rather than at the fleet's median, because
+       costPerMile sees one vehicle at a time: a fleet-relative anchor would
+       move every vehicle's cost whenever a row is added. */
+    return Math.pow(inp.repair_cost_spread_ratio, (50 - v.reliability) / 100);
+  }
+
   function resaleMultiplier(v, inp) {
     return (1 - v.deprec5yr) / (1 - inp.industry_avg_5yr_deprec);
   }
@@ -84,7 +99,7 @@ var VA = (function () {
     return (price - resale) / miles
          + fuel + tires
          + inp.scheduled_maint_per_mile
-         + repairReserve(inp)
+         + repairReserve(inp) * repairMultiplier(v, inp)
          + (inp.insurance_per_year + inp.registration_per_year) / inp.annual_miles
          + price * inp.sales_tax_rate / miles
          + capital * years / miles;
@@ -93,6 +108,7 @@ var VA = (function () {
   return {
     retentionIndex: retentionIndex,
     repairReserve: repairReserve,
+    repairMultiplier: repairMultiplier,
     resaleMultiplier: resaleMultiplier,
     buyPrice: buyPrice,
     costPerMile: costPerMile

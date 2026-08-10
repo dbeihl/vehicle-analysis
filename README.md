@@ -94,7 +94,7 @@ The eyebrow summary under the masthead is a button. Click it to open a panel whe
 
 The eleven fields are split into two groups, and the split is not cosmetic. The first eight can change which vehicle ranks highest, because each one multiplies against something that varies per vehicle: the two odometers interact with each vehicle's depreciation curve, annual mileage divides against the cost of capital (`capital * years / miles` reduces to `capital / annual_miles`, and capital scales with each vehicle's price), fuel prices divide by its MPG, and the two tire prices and tire life depend on whether it wears truck or crossover tires.
 
-The remaining three, labelled "Budget only", are maintenance per mile, insurance, and registration. Those are identical for every vehicle, so they shift all 79 costs per mile by the same constant. They change what the vehicle costs you; they cannot change which one wins.
+The remaining three, labelled "Budget only", are maintenance per mile, insurance, and registration. Those are identical for every vehicle, so they shift all 79 costs per mile by the same constant. They change what the vehicle costs you; they cannot change which one wins. The repair reserve used to work the same way and no longer does — see the Cost bullet under "The six axes are not equally trustworthy".
 
 The panel validates as you type. Numbers must fall within published ranges. The buy odometer cannot equal or exceed the sell odometer in either direction; if you try, the field rejects the input and marks itself invalid.
 
@@ -104,7 +104,7 @@ Clicking Reset restores all eleven assumption fields to their defaults. It does 
 
 ## The six axes are not equally trustworthy
 
-- **Cost** is computed from the workbook.
+- **Cost** is computed from the workbook, with one judgment inside it: the repair reserve is scaled by each vehicle's reliability score, `ratio^((50 - reliability)/100)`, where the ratio defaults to 2.66 — the worst-to-best spread in RepairPal's 2026 brand repair-cost averages (Toyota $441/yr, Land Rover $1,174/yr). What is sourced is the gap between two industry extremes, and neither brand is in this fleet. Using it here assumes this project's own 0 and 100 sit where Land Rover and Toyota sit, and that repair cost is log-linear in the score between them. Neither assumption is measured. Set `repair_cost_spread_ratio` to 1 in `data/inputs.json` to turn it off; the neutral value is 1, not 0.
 - **Efficiency** is EPA and observed MPG.
 - **Comfort** starts from decibel-meter readings at 55 mph, then subtracts for documented seat complaints and body-on-frame ride harshness. Models tagged "estimated" had no published reading.
 - **Longevity** uses odds of reaching 250,000 miles against each study's own baseline, but 45 of the 79 vehicles have no published figure.
@@ -117,6 +117,7 @@ Clicking Reset restores all eleven assumption fields to their defaults. It does 
 - **Not tax advice, and none of it is modelled in this repo.** The tax analysis lives only on the spreadsheet's `Tax` tab; `build.py` and the page ignore it entirely. W-2 employees cannot deduct business mileage: the Tax Cuts and Jobs Act (TCJA) suspended it and the One Big Beautiful Bill Act (OBBBA, 2025) made that permanent. Section 179 and bonus depreciation at a 30-month turnover cadence are a timing benefit rather than a saving, because Section 1245 recapture takes it back as ordinary income on sale. Talk to a CPA.
 - **The depreciation curve is directional.** It comes from pooled asking-price cross-sections of ~327,000 listings, not the same VIN tracked over time.
 - **Several figures expire.** Fuel prices, IRS mileage rates, and the iSeeCars baselines all move annually. The tax law moved twice during the period the analysis covers.
+- **A guess now moves the dollars.** Reliability is one of the two axes this README calls an informed guess, and it scales the repair reserve, so the Cost axis is no longer purely computed. The spread's width is sourced; which vehicle sits where on the reliability scale is not. NHTSA complaint and TSB data and the UK DVSA MOT results are the path to replacing that guess with something measured.
 
 - **The spreadsheet is no longer authoritative.** `data/vehicles.csv` is. The spreadsheet still holds the `Sources` and `Tax` tabs, which have no equivalent in the repo, but its `Models` tab stopped tracking the CSV once prices were corrected. `test_build.py` still uses its published figures as an oracle, which works because it compares against the untouched `price` column.
 
