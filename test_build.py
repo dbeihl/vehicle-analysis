@@ -40,6 +40,7 @@ def main():
     assert not problems, 'price provenance incomplete:\n  ' + '\n  '.join(problems)
 
     check_collapse_order()
+    check_export()
     check_price_resolution()
     check_emitted_schema(real)
     check_row_keys(real)
@@ -267,6 +268,24 @@ def check_collapse_order():
     r = subprocess.run([node, str(root / 'test_collapse.mjs')],
                        cwd=root, capture_output=True, text=True)
     assert r.returncode == 0, f'collapse-order check failed:\n{r.stdout}{r.stderr}'
+    print(f'  {r.stdout.strip()}')
+
+
+def check_export():
+    """Run the CSV export test: every ranked row, every assumption, escaped.
+
+    Same shape as check_collapse_order -- the functions under test are pulled
+    out of the shipped index.html, so this fails if the page's own export
+    logic regresses.
+    """
+    import shutil
+    import subprocess
+    node = shutil.which('node')
+    assert node, 'node is required to test the CSV export and was not found'
+    root = pathlib.Path(__file__).parent
+    r = subprocess.run([node, str(root / 'test_export.mjs')],
+                       cwd=root, capture_output=True, text=True)
+    assert r.returncode == 0, f'export check failed:\n{r.stdout}{r.stderr}'
     print(f'  {r.stdout.strip()}')
 
 
