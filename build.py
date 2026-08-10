@@ -15,6 +15,7 @@ assumption are on that workbook's Sources tab.
 import argparse
 import csv
 import json
+import math
 import pathlib
 import sys
 
@@ -243,6 +244,15 @@ def input_problems(inp):
                         f'repair spread off')
     elif isinstance(raw, bool) or not isinstance(raw, (int, float)):
         problems.append(f'{key} is not a number: {raw!r}')
+    elif not math.isfinite(raw):
+        # json.load() accepts the non-standard NaN, Infinity and -Infinity
+        # tokens by default, and both `NaN < 1` and `Infinity < 1` are False,
+        # so neither is caught by the range check below. NaN would make every
+        # cost per mile NaN and empty the chart; Infinity would make the
+        # reserve infinite for any vehicle under reliability 50.
+        problems.append(f'{key} is {raw}, which is not a finite number. '
+                        f'JSON permits the NaN and Infinity tokens; this '
+                        f'model does not')
     elif raw < 1:
         problems.append(
             f'{key} is {raw}, below 1. It is the worst-to-best repair-cost '

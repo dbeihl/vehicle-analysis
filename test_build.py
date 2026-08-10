@@ -171,6 +171,19 @@ def check_input_ranges():
     assert problems('2.66'), 'a quoted ratio is not a number and must be rejected'
     assert problems(True), 'a boolean ratio must be rejected, not read as 1'
 
+    # json.load() accepts the non-standard NaN, Infinity and -Infinity tokens
+    # by default, so all three can arrive from a hand-edited inputs.json.
+    # None is caught by the `< 1` comparison: NaN < 1 and Infinity < 1 are
+    # both False, and -Infinity would be swallowed by the inversion message
+    # rather than named for what it is. NaN is the dangerous one -- it makes
+    # every cost per mile NaN, and the page draws an empty chart instead of
+    # failing.
+    for bad in (float('nan'), float('inf'), float('-inf')):
+        found = problems(bad)
+        assert found, f'a ratio of {bad} is not finite and must be rejected'
+        assert any('finite' in p for p in found), \
+            f'{bad} must be named as non-finite, not mistaken for an inverted ratio; got: {found}'
+
 
 def check_freeze_fixture_key_format(rows):
     """freeze_fixture.py's writer must key by build.row_key(v), not bare name.

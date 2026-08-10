@@ -1,7 +1,7 @@
 # Reliability into cost
 
 Date: 2026-08-10
-Status: approved, not implemented
+Status: implemented
 
 ## Problem
 
