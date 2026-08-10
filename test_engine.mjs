@@ -14,6 +14,13 @@ const fixture = JSON.parse(readFileSync('./data/engine-fixture.json', 'utf8'));
 const inputs = fixture._inputs;
 const dumped = JSON.parse(readFileSync('./build-models.json', 'utf8'));
 
+/* The workbook has no reliability term. Every assertion below that derives
+   from the spreadsheet -- the frozen oracle variant, the 11 published
+   figures, the balanced-six winner, the frontier -- runs at a neutral
+   spread, mirroring build.oracle_inputs() on the Python side. */
+const ORACLE_INPUTS = { ...inputs, repair_cost_spread_ratio: 1 };
+const INPUTS_FOR = { full: inputs, workbook_oracle: ORACLE_INPUTS };
+
 const TOL = 1e-12;
 let checked = 0, worst = -Infinity, worstName = '';
 
@@ -75,9 +82,18 @@ for (const variant of ['full', 'workbook_oracle']) {
   for (const v of models) {
     const expected = fixture[variant][v.key];
     if (!expected) throw new Error(`fixture has no ${variant} entry for ${v.name}`);
-    const got = VA.costPerMile(v, inputs);
+    const got = VA.costPerMile(v, INPUTS_FOR[variant]);
     if (!Number.isFinite(got)) throw new Error(`${v.name} (${variant}): got ${got}`);
     const delta = Math.abs(got - expected.cpm);
+    /* The oracle variant is frozen at a neutral spread, and multiplying by
+       exactly 1.0 is exact in IEEE-754. So this variant must match to the
+       bit, not to a tolerance -- any drift at all means the multiplier is
+       not neutral at 1 and every workbook assertion below is running
+       against a formula the spreadsheet never implemented. */
+    if (variant === 'workbook_oracle' && delta !== 0) {
+      throw new Error(`${v.name}: neutral spread moved the figure by ${delta} -- `
+        + `it must be bit-for-bit identical`);
+    }
     if (delta > worst) { worst = delta; worstName = `${v.name} (${variant})`; }
     if (delta > TOL) {
       throw new Error(
@@ -111,7 +127,7 @@ const PUBLISHED = {
 for (const [key, expected] of Object.entries(PUBLISHED)) {
   const m = models.find(x => x.key === key);
   if (!m) throw new Error(`${key} missing from the dataset`);
-  const got = VA.costPerMile({ ...m, observedPrice: null }, inputs);
+  const got = VA.costPerMile({ ...m, observedPrice: null }, ORACLE_INPUTS);
   if (Math.abs(got - expected) >= 0.001) {
     throw new Error(`${key}: workbook says ${expected}/mi, engine computes ${got}`);
   }
@@ -140,7 +156,7 @@ const EXPECTED_FRONTIER = new Set([
   'Ford Escape Hybrid|unspecified', 'Honda HR-V|unspecified'
 ]);
 
-const cpms = models.map(m => VA.costPerMile(m, inputs));
+const cpms = models.map(m => VA.costPerMile(m, ORACLE_INPUTS));
 const lo = Math.min(...cpms), hi = Math.max(...cpms);
 const scored = models.map((m, i) => Object.assign({}, m, { cost: scale(cpms[i], lo, hi, true) }));
 
@@ -203,3 +219,30 @@ if (!(moved.price < scaled.observedPrice)) {
   throw new Error('a higher-mileage buy point must cost less');
 }
 console.log('ok: observed prices scale along the retention curve');
+
+/* The multiplier's shape, pinned at three points. Neutral is 1, not 0:
+   Math.pow(0, x) is 0 or Infinity, which would destroy the engine rather
+   than turn the feature off. */
+const MULT_CASES = [
+  { ratio: 1,    reliability: 0,   want: 1 },
+  { ratio: 1,    reliability: 100, want: 1 },
+  { ratio: 2.66, reliability: 50,  want: 1 },
+  { ratio: 2.66, reliability: 100, want: 1 / Math.sqrt(2.66) },
+  { ratio: 2.66, reliability: 0,   want: Math.sqrt(2.66) },
+];
+for (const c of MULT_CASES) {
+  const got = VA.repairMultiplier({ reliability: c.reliability },
+                                  { repair_cost_spread_ratio: c.ratio });
+  if (Math.abs(got - c.want) > 1e-12) {
+    throw new Error(`repairMultiplier at ratio ${c.ratio}, reliability `
+      + `${c.reliability}: got ${got}, want ${c.want}`);
+  }
+}
+/* The ratio IS the worst-to-best spread across the full 0-100 scale. If the
+   exponent's divisor drifts from 100 this is the assertion that catches it. */
+const best = VA.repairMultiplier({ reliability: 100 }, { repair_cost_spread_ratio: 2.66 });
+const worstRel = VA.repairMultiplier({ reliability: 0 }, { repair_cost_spread_ratio: 2.66 });
+if (Math.abs(worstRel / best - 2.66) > 1e-12) {
+  throw new Error(`worst/best spread is ${worstRel / best}, want the ratio itself, 2.66`);
+}
+console.log('ok: repair multiplier is neutral at 1 and spans the ratio at 2.66');

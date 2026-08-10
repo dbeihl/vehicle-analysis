@@ -25,7 +25,7 @@ MARKER = 'const MODELS = '
 # Fields engine.js reads. Absence is a NaN in the browser, not an exception,
 # so test_build.py asserts every one of these reaches the page.
 REQUIRED_ENGINE_FIELDS = ('price', 'mpg', 'fuel', 'deprec5yr', 'tireClass',
-                          'observedPrice', 'observedAt')
+                          'observedPrice', 'observedAt', 'reliability')
 
 # Every monetary figure in this project is USD. These bounds are a data-entry
 # check, not a currency detector: a passenger vehicle outside this range is an
@@ -288,6 +288,33 @@ def strip_for_oracle(rows):
     recover the placeholder.
     """
     return [dict(r, msrp='', observed_price='') for r in rows]
+
+
+# The workbook has no reliability term, so its published figures were
+# computed with no spread at all. Neutral for a ratio is 1, not 0.
+NEUTRAL_SPREAD = 1.0
+
+
+def oracle_inputs(inp):
+    """Inputs as the workbook computed them.
+
+    Same idea as strip_for_oracle(), one level up: that function removes the
+    prices the workbook never saw, this one removes the term it never had.
+    Without it the workbook's 11 published figures, its balanced-six winner,
+    and its frontier would all have to be rewritten to match a formula the
+    spreadsheet does not implement -- which would destroy the only oracle in
+    this repo not written by this codebase rather than update it.
+    """
+    return dict(inp, repair_cost_spread_ratio=NEUTRAL_SPREAD)
+
+
+def inputs_by_variant(inp):
+    """The inputs each dump_variants() variant must be evaluated under.
+
+    Returned together so the Node consumers -- freeze_fixture.py and
+    test_engine.mjs -- cannot pair a variant with the wrong input set.
+    """
+    return {'full': inp, 'workbook_oracle': oracle_inputs(inp)}
 
 
 def dump_variants(rows, inp):

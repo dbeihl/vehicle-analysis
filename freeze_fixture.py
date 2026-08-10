@@ -48,7 +48,7 @@ const out = {};
 for (const variant of Object.keys(payload.models)) {
   out[variant] = {};
   for (const m of payload.models[variant]) {
-    const cpm = VA.costPerMile(m, payload.inputs);
+    const cpm = VA.costPerMile(m, payload.inputsByVariant[variant]);
     if (!Number.isFinite(cpm)) {
       throw new Error(variant + ': ' + m.name + ': costPerMile returned ' + cpm);
     }
@@ -86,7 +86,9 @@ def build_fixture(rows, node):
     models_path = ROOT / 'freeze-fixture-models.json'
     cpm_path = ROOT / 'freeze-fixture-cpm.json'
     script_path = ROOT / 'freeze-fixture-gen.js'
-    models_path.write_text(json.dumps({'models': dumped, 'inputs': build.INPUTS}))
+    models_path.write_text(json.dumps({
+        'models': dumped,
+        'inputsByVariant': build.inputs_by_variant(build.INPUTS)}))
     script_path.write_text(NODE_GENERATOR)
     try:
         r = subprocess.run([node, str(script_path), str(models_path), str(cpm_path)],

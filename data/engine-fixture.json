@@ -1,7 +1,8 @@
 {
-  "_comment": "Froze the Python cost engine's output before it was deleted, to prove the JS port reproduces it to ~1e-12. Raw and unrounded on purpose. Now also the regression baseline for engine.js and the data: a deliberate change to the model or to a vehicle's price requires regenerating this file with `python3 freeze_fixture.py`. Never regenerate it just to make a failing port pass. Keys are (nameplate|trim) as of the trim migration; values are unchanged from the original freeze.",
+  "_comment": "Froze the Python cost engine's output before it was deleted, to prove the JS port reproduces it to ~1e-12. Raw and unrounded on purpose. Now also the regression baseline for engine.js and the data: a deliberate change to the model or to a vehicle's price requires regenerating this file with `python3 freeze_fixture.py`. Never regenerate it just to make a failing port pass. Keyed by build.row_key(v), i.e. '(nameplate|trim)' -- e.g. 'Toyota Highlander Hybrid|unspecified' -- not by bare nameplate, because a nameplate stops being a unique key the moment it carries more than one trim.",
   "_inputs": {
     "_comment": "Inputs tab of vehicle-turnover-planner.xlsx. Sources on the Sources tab.",
+    "_currency": "USD",
     "annual_miles": 55000,
     "avg_outstanding_balance_factor": 0.55,
     "buy_odometer": 40000,
@@ -22,6 +23,7 @@
     "insurance_per_year": 1600,
     "loan_apr": 0.065,
     "registration_per_year": 450,
+    "repair_cost_spread_ratio": 1.0,
     "repair_reserve_per_mile": {
       "100k_to_150k": 0.06,
       "over_150k": 0.1,
