@@ -104,7 +104,7 @@ Clicking Reset restores all eleven assumption fields to their defaults. It does 
 
 ## The six axes are not equally trustworthy
 
-- **Cost** is computed from the workbook, with one judgment inside it: the repair reserve is scaled by each vehicle's reliability score, `ratio^((50 - reliability)/100)`, where the ratio defaults to 2.66 — the worst-to-best spread in RepairPal's 2026 brand repair-cost averages (Toyota $441/yr, Land Rover $1,174/yr). Set `repair_cost_spread_ratio` to 1 in `data/inputs.json` to turn it off; the neutral value is 1, not 0.
+- **Cost** is computed from the workbook, with one judgment inside it: the repair reserve is scaled by each vehicle's reliability score, `ratio^((50 - reliability)/100)`, where the ratio defaults to 2.66 — the worst-to-best spread in RepairPal's 2026 brand repair-cost averages (Toyota $441/yr, Land Rover $1,174/yr). What is sourced is the gap between two industry extremes, and neither brand is in this fleet. Using it here assumes this project's own 0 and 100 sit where Land Rover and Toyota sit, and that repair cost is log-linear in the score between them. Neither assumption is measured. Set `repair_cost_spread_ratio` to 1 in `data/inputs.json` to turn it off; the neutral value is 1, not 0.
 - **Efficiency** is EPA and observed MPG.
 - **Comfort** starts from decibel-meter readings at 55 mph, then subtracts for documented seat complaints and body-on-frame ride harshness. Models tagged "estimated" had no published reading.
 - **Longevity** uses odds of reaching 250,000 miles against each study's own baseline, but 45 of the 79 vehicles have no published figure.

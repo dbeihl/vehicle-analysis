@@ -194,6 +194,72 @@ if (!frontierOk) {
 }
 console.log(`ok: balanced-six = ${winner} at ${winnerScore.toFixed(1)}, frontier = ${[...frontier].sort().join(', ')}`);
 
+/* CHARACTERIZATION PIN -- NOT AN ORACLE.
+   Everything above runs on workbook_oracle at a neutral spread, which is
+   what makes it independent of this codebase. That leaves the ranking the
+   page actually ships -- the 'full' variant at the live ratio in
+   data/inputs.json -- asserted by nothing at all: the multiplier could be
+   dropped, doubled, or inverted and every assertion above would stay green.
+
+   So these constants were produced by RUNNING this code, not by any outside
+   source. They record what the model does today. When the model changes on
+   purpose -- the ratio moves, engine.js changes, a vehicle's data is
+   corrected -- these are expected to change: rerun, update them
+   deliberately, and say so in the commit. That is the opposite of the
+   workbook figures above, which are ground truth and must never be edited
+   to make a failing engine pass. A diff here is not proof of a bug; it is
+   proof that the shipped ranking moved, which is what nothing was
+   reporting before. */
+const LIVE_WINNER = 'Toyota Highlander Hybrid';
+const LIVE_SCORE = 89.2;
+const LIVE_FRONTIER = new Set([
+  'Ford Escape Hybrid|unspecified', 'Ford Maverick Hybrid|unspecified',
+  'Honda HR-V|unspecified', 'Toyota Highlander Hybrid|unspecified',
+  'Toyota RAV4 Hybrid|unspecified', 'Toyota Venza|unspecified'
+]);
+
+// Reuses scale(), BALANCED, valueAxes and valueTotal above -- same axes, same
+// order of operations as index.html's compute(). The only differences from
+// the oracle block are the variant (full, observed prices intact) and the
+// inputs (live, so the spread ratio is whatever data/inputs.json ships).
+const liveModels = dumped.full;
+const liveCpms = liveModels.map(m => VA.costPerMile(m, INPUTS_FOR.full));
+const liveLo = Math.min(...liveCpms), liveHi = Math.max(...liveCpms);
+const liveScored = liveModels.map((m, i) =>
+  Object.assign({}, m, { cost: scale(liveCpms[i], liveLo, liveHi, true) }));
+
+let liveWinner = null, liveWinnerScore = -Infinity;
+for (const m of liveScored) {
+  const s = Object.keys(BALANCED).reduce((sum, k) => sum + BALANCED[k] * m[k], 0) / 100;
+  if (s > liveWinnerScore) { liveWinnerScore = s; liveWinner = m.name; }
+}
+if (liveWinner !== LIVE_WINNER) {
+  throw new Error(`the shipped balanced-six winner is now ${liveWinner}, pinned at `
+    + `${LIVE_WINNER}. If the model changed on purpose, rerun and repin`);
+}
+if (Math.abs(liveWinnerScore - LIVE_SCORE) >= 0.05) {
+  throw new Error(`the shipped balanced-six score is now ${liveWinnerScore.toFixed(1)}, `
+    + `pinned at ${LIVE_SCORE}. If the model changed on purpose, rerun and repin`);
+}
+
+for (const m of liveScored) {
+  m.value = valueAxes.reduce((s, k) => s + BALANCED[k] * m[k], 0) / valueTotal;
+}
+const liveFrontier = new Set(
+  liveScored.filter(m => !liveScored.some(o =>
+    o !== m && o.cost >= m.cost && o.value >= m.value &&
+    (o.cost > m.cost || o.value > m.value)
+  )).map(m => m.key)
+);
+const liveFrontierOk = liveFrontier.size === LIVE_FRONTIER.size &&
+  [...liveFrontier].every(n => LIVE_FRONTIER.has(n));
+if (!liveFrontierOk) {
+  throw new Error(`the shipped frontier is now ${[...liveFrontier].sort()}, pinned at `
+    + `${[...LIVE_FRONTIER].sort()}. If the model changed on purpose, rerun and repin`);
+}
+console.log(`ok: shipped ranking pinned at ratio ${INPUTS_FOR.full.repair_cost_spread_ratio} `
+  + `= ${liveWinner} at ${liveWinnerScore.toFixed(1)}, frontier of ${liveFrontier.size}`);
+
 /* Price scaling. An observed price is measured at one odometer reading;
    moving the buy point must move the price along the retention curve, or the
    page shows a 40,000-mile price against a 70,000-mile buy point. */
@@ -220,7 +286,7 @@ if (!(moved.price < scaled.observedPrice)) {
 }
 console.log('ok: observed prices scale along the retention curve');
 
-/* The multiplier's shape, pinned at three points. Neutral is 1, not 0:
+/* The multiplier's shape, pinned at five points. Neutral is 1, not 0:
    Math.pow(0, x) is 0 or Infinity, which would destroy the engine rather
    than turn the feature off. */
 const MULT_CASES = [

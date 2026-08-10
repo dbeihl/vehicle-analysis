@@ -39,6 +39,14 @@ def main():
     problems = build.price_problems(real)
     assert not problems, 'price provenance incomplete:\n  ' + '\n  '.join(problems)
 
+    # Same treatment for the hand-edited assumptions. A shipped ratio below 1
+    # would invert the repair model and leave every other check in this file
+    # green, so the suite has to fail on the real data/inputs.json, not only
+    # on the synthetic rows check_input_ranges() constructs.
+    problems = build.input_problems(build.INPUTS)
+    assert not problems, 'data/inputs.json out of range:\n  ' + '\n  '.join(problems)
+
+    check_input_ranges()
     check_collapse_order()
     check_export()
     check_price_resolution()
@@ -123,6 +131,45 @@ def check_row_keys(rows):
              dict(base, name='Clean', trim='loaded', trim_name='EX-L')]
     assert not build.price_problems(clean), \
         'fully-populated sibling tiers on one nameplate must not be rejected'
+
+
+def check_input_ranges():
+    """input_problems() must reject a repair spread ratio below 1.
+
+    The ratio is the one assumption the README tells a reader to hand-edit
+    ("set it to 1 to turn it off"), and 0.5 is the plausible typo for "half
+    the effect". It is not half the effect: the exponent's sign flips, so the
+    most reliable vehicles get the biggest repair reserve. Nothing else in
+    this repo can catch it -- regenerating the fixture at 0.5 makes the
+    engine parity check, the workbook oracle, and every multiplier assertion
+    agree with the inverted model -- so these cases exercise the gate itself,
+    the same way check_row_keys() exercises the row-identity gate.
+    """
+    def problems(ratio):
+        return build.input_problems(dict(build.INPUTS,
+                                         repair_cost_spread_ratio=ratio))
+
+    for bad in (0.5, 0, -2.66, 0.999):
+        found = problems(bad)
+        assert found, f'a spread ratio of {bad} inverts the model and must be rejected'
+        assert any('repair_cost_spread_ratio' in p for p in found), \
+            f'the rejection must name the key; got: {found}'
+
+    # 1 is the documented off switch, not an error, and the shipped default
+    # must pass. A gate that rejected either would make the feature
+    # unturnoffable or the repo unbuildable.
+    assert not problems(1), 'a ratio of 1 is the documented off switch and must pass'
+    assert not problems(2.66), 'the shipped default must pass'
+
+    # A missing or non-numeric ratio reaches engine.js as NaN, which renders
+    # a blank chart rather than raising. Unknown has to be an error here for
+    # the same reason unknown provenance is an error in price_problems().
+    missing = {k: v for k, v in build.INPUTS.items()
+               if k != 'repair_cost_spread_ratio'}
+    assert build.input_problems(missing), \
+        'a missing spread ratio must be rejected, not defaulted'
+    assert problems('2.66'), 'a quoted ratio is not a number and must be rejected'
+    assert problems(True), 'a boolean ratio must be rejected, not read as 1'
 
 
 def check_freeze_fixture_key_format(rows):

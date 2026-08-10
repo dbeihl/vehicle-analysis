@@ -218,6 +218,40 @@ def price_problems(rows):
     return problems
 
 
+def input_problems(inp):
+    """Data-integrity checks on data/inputs.json. Empty list means clean.
+
+    Sibling to price_problems(), fired from the same place in main() for the
+    same reason: data/inputs.json is hand-edited, and the README tells a
+    reader to edit this very key to turn the repair spread off.
+
+    repair_cost_spread_ratio is a worst-to-best RATIO, so 1 is its neutral
+    value and its domain is 1 upward. A value below 1 does not soften the
+    effect, it reverses the sign: at 0.5 the most reliable vehicle carries
+    1.41x the reserve and the least reliable 0.80x, exactly backwards. That
+    refreezes without complaint and leaves the whole suite green -- the
+    fixture would be regenerated at the same inverted ratio, so every
+    downstream check would agree with it. Nothing else in this repo can
+    notice, which is why this check has to.
+    """
+    problems = []
+    key = 'repair_cost_spread_ratio'
+    raw = inp.get(key)
+    if raw is None:
+        problems.append(f'{key} is missing; engine.js computes NaN for every '
+                        f'cost per mile without it. Set it to 1 to turn the '
+                        f'repair spread off')
+    elif isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        problems.append(f'{key} is not a number: {raw!r}')
+    elif raw < 1:
+        problems.append(
+            f'{key} is {raw}, below 1. It is the worst-to-best repair-cost '
+            f'ratio: 1 means the spread is off, and any value below 1 '
+            f'inverts the model -- the most reliable vehicles would carry '
+            f'the largest repair reserve and the least reliable the smallest')
+    return problems
+
+
 def num(x):
     """Drop the trailing .0 on whole numbers so 27.0 mpg serializes as 27."""
     return int(x) if float(x).is_integer() else float(x)
@@ -311,8 +345,9 @@ def oracle_inputs(inp):
 def inputs_by_variant(inp):
     """The inputs each dump_variants() variant must be evaluated under.
 
-    Returned together so the Node consumers -- freeze_fixture.py and
-    test_engine.mjs -- cannot pair a variant with the wrong input set.
+    Returned together so a caller cannot pair a variant with the wrong input
+    set. freeze_fixture.py consumes this directly; test_engine.mjs mirrors it
+    as INPUTS_FOR, because Python and JS cannot share one definition.
     """
     return {'full': inp, 'workbook_oracle': oracle_inputs(inp)}
 
@@ -323,10 +358,18 @@ def dump_variants(rows, inp):
     'full' is the real data; 'workbook_oracle' runs strip_for_oracle() first.
     Shared by test_build.py's parity check and freeze_fixture.py's
     regeneration so both hand the engine exactly the same input.
+
+    Each variant is built under its own inputs from inputs_by_variant(), not
+    under a single shared `inp`. build_models() reads no cost input today, so
+    this changes nothing right now -- but pairing the variant with the wrong
+    input set here is precisely the mistake inputs_by_variant() exists to
+    prevent, and it should not be reintroduced one function later.
     """
+    by_variant = inputs_by_variant(inp)
     return {
-        'full': build_models(rows, inp),
-        'workbook_oracle': build_models(strip_for_oracle(rows), inp),
+        'full': build_models(rows, by_variant['full']),
+        'workbook_oracle': build_models(strip_for_oracle(rows),
+                                        by_variant['workbook_oracle']),
     }
 
 
@@ -396,6 +439,11 @@ def main():
     problems = price_problems(rows)
     if problems:
         sys.exit('price provenance is incomplete:\n  '
+                 + '\n  '.join(problems))
+
+    problems = input_problems(INPUTS)
+    if problems:
+        sys.exit('data/inputs.json is out of range:\n  '
                  + '\n  '.join(problems))
 
     html, updated, models = render_current(rows)
