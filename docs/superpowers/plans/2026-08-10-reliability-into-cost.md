@@ -370,8 +370,10 @@ Keep the output. It goes in the PR body, so the ranking change is visible rather
 
 - [ ] **Step 7: Commit**
 
+`index.html` is in this list because `build.py` inlines `INPUTS` into it. Leaving it out fails `check_page_up_to_date`.
+
 ```bash
-git add data/inputs.json data/engine-fixture.json
+git add data/inputs.json data/engine-fixture.json index.html
 git commit -F- <<'EOF'
 Set the reliability spread to the published 2.66x
 
