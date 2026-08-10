@@ -246,3 +246,23 @@ if (Math.abs(worstRel / best - 2.66) > 1e-12) {
   throw new Error(`worst/best spread is ${worstRel / best}, want the ratio itself, 2.66`);
 }
 console.log('ok: repair multiplier is neutral at 1 and spans the ratio at 2.66');
+
+/* Wiring check. Every assertion above calls VA.repairMultiplier() directly, or
+   runs costPerMile at ratio 1 where the multiplier is identically 1 for every
+   reliability -- so deleting "* repairMultiplier(v, inp)" from costPerMile's
+   sum would leave every one of them green. This is the one assertion that
+   moves the ratio off 1 on a vehicle whose reliability isn't 50, so the
+   multiplier is not 1 and its presence in the sum is actually observable. */
+const wired = dumped.full.find(m => m.reliability !== 50);
+if (!wired) throw new Error('no full-variant vehicle with reliability !== 50 to test wiring against');
+const wiredNeutral = { ...inputs, repair_cost_spread_ratio: 1 };
+const wiredTest = { ...inputs, repair_cost_spread_ratio: 2 };
+const atNeutral = VA.costPerMile(wired, wiredNeutral);
+const atTestRatio = VA.costPerMile(wired, wiredTest);
+const wiredExpected = VA.repairReserve(inputs) * (VA.repairMultiplier(wired, wiredTest) - 1);
+if (Math.abs((atTestRatio - atNeutral) - wiredExpected) > 1e-12) {
+  throw new Error(`${wired.name}: costPerMile moved by ${atTestRatio - atNeutral} when the `
+    + `spread ratio changed from 1 to 2, expected ${wiredExpected} -- repairMultiplier is `
+    + `computed but not wired into costPerMile's sum`);
+}
+console.log('ok: repairMultiplier is wired into costPerMile\'s sum, not just callable standalone');
