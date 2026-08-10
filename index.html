@@ -803,8 +803,10 @@ document.getElementById("assumeReset").addEventListener("click",function(){
    export that omitted it would not let anyone reproduce the numbers sitting
    beside it. */
 function csvEscape(s){
+  /* CR counts as a record break to a spreadsheet just as LF does, so a bare
+     one has to be quoted too (RFC 4180) or it splits a row in half. */
   s=String(s);
-  return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
 }
 function csvRow(cells){return cells.map(csvEscape).join(",")}
 function buildExport(st){

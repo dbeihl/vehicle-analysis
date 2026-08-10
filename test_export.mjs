@@ -21,6 +21,18 @@ const buildSrc = extract(/function buildExport\(st\)\{[\s\S]*?\n\}/, 'buildExpor
 const buildExport = new Function(
   'INPUTS', 'DEFAULTS', 'FIELDS', 'AXES', 'W', 'PRESET', 'FILT', 'SEL', 'location', 'st',
   `${escSrc}\n${rowSrc}\n${buildSrc}\nreturn buildExport(st);`);
+const csvEscape = new Function(`${escSrc}\nreturn csvEscape;`)();
+
+/* Both line terminators end a record to a spreadsheet, so both have to be
+   quoted. A bare CR was the miss: it is invisible in a diff and splits a row
+   in half in Excel while every LF-only test still passes. */
+for (const [label, value] of [['CR', 'Runs hot\rper NHTSA'],
+  ['CRLF', 'Runs hot\r\nper NHTSA'], ['LF', 'Runs hot\nper NHTSA']]) {
+  const out = csvEscape(value);
+  if (out[0] !== '"' || out[out.length - 1] !== '"') {
+    throw new Error(`a ${label} inside a field was left unquoted: ${JSON.stringify(out)}`);
+  }
+}
 
 const INPUTS = {
   annual_miles: 60000, gas_per_gal: 3.55,
@@ -47,7 +59,10 @@ function fakeRow(i) {
 
 const ROWS = 30;  // more than drawRanked's slice of 24
 const ranked = Array.from({ length: ROWS }, (_, i) => fakeRow(i));
-ranked[5].risk = 'Runs hot, and the "known" fix is a recall, per NHTSA';
+/* CR only, not CRLF: this test splits the file on \n to count rows, so a
+   quoted LF would break the splitter rather than the export. The escaping of
+   all three terminators is asserted directly above. */
+ranked[5].risk = 'Runs hot, and the "known" fix is a recall,\rper NHTSA';
 ranked[5].name = 'Comma, Motors';
 
 const csv = buildExport(INPUTS, DEFAULTS, FIELDS, AXES, W, 'Custom', 'heavy',
@@ -104,7 +119,7 @@ body.forEach((line, i) => {
 
 const nasty = fields(body[5]);
 if (nasty[1] !== 'Comma, Motors') throw new Error(`name lost its comma: ${nasty[1]}`);
-if (nasty[25] !== 'Runs hot, and the "known" fix is a recall, per NHTSA') {
+if (nasty[25] !== 'Runs hot, and the "known" fix is a recall,\rper NHTSA') {
   throw new Error(`risk text did not survive escaping: ${nasty[25]}`);
 }
 
