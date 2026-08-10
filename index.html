@@ -88,6 +88,14 @@
   .rank .t{font-family:var(--mono); font-size:10.5px; flex:0 0 auto}
   .rank .s{font-family:var(--mono); font-size:12px; font-weight:700; width:34px; text-align:right; flex:0 0 auto}
   .scroll{max-height:340px; overflow-y:auto; -webkit-overflow-scrolling:touch}
+  /* A control row, not a footnote: the button gets the card's full-strength
+     rule above it and enough padding to own its line. .fine wraps under the
+     button on a phone rather than squeezing it. */
+  .foot{border-top:1px solid var(--rule); padding:12px 13px 13px; display:flex;
+        flex-wrap:wrap; align-items:center; gap:8px 10px}
+  .foot .chip{background:var(--ink); color:var(--surface); border-color:var(--ink);
+              font-size:12px; padding:9px 14px; flex:0 0 auto}
+  .foot .fine{flex:1; min-width:180px}
   .notes{border-top:1px solid var(--rule); margin-top:20px; padding-top:14px}
   .note h3{font-size:13px; font-weight:700; margin:0 0 4px}
   .note p{font-size:12.5px; color:var(--ink2); line-height:1.55; margin:0 0 16px}
@@ -139,8 +147,16 @@
   </div>
 
   <div class="card">
-    <div class="cardhead"><span>Ranked for these weights</span></div>
+    <div class="cardhead"><span>Ranked for these weights</span><span>top 24</span></div>
     <div class="scroll" id="ranked"></div>
+    <!-- Sits with the data it exports, and reuses the same bordered control row
+         as the preset chips below the sliders. At the foot of the notes it read
+         as fine print, which is what fine print gets treated as. -->
+    <div class="foot">
+      <button class="chip" id="exportBtn">Download CSV</button>
+      <span class="fine">Every vehicle in the filter, not just the 24 shown, plus every
+      assumption behind the numbers, including the ones the panel has no field for.</span>
+    </div>
   </div>
 
   <div class="notes">
@@ -781,6 +797,73 @@ document.getElementById("assumeReset").addEventListener("click",function(){
   syncSliders();
   render();
 });
+/* One file holding the whole view: the assumptions first, then the table they
+   produced. The eleven panel fields are only part of the model -- the block
+   below them is just as load-bearing and appears nowhere in the UI, so an
+   export that omitted it would not let anyone reproduce the numbers sitting
+   beside it. */
+function csvEscape(s){
+  /* CR counts as a record break to a spreadsheet just as LF does, so a bare
+     one has to be quoted too (RFC 4180) or it splits a row in half. */
+  s=String(s);
+  return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function csvRow(cells){return cells.map(csvEscape).join(",")}
+function buildExport(st){
+  var rr=INPUTS.repair_reserve_per_mile, lines=[];
+  lines.push(csvRow(["ASSUMPTION","VALUE"]));
+  FIELDS.forEach(function(f){
+    lines.push(csvRow([f.l+(INPUTS[f.k]!==DEFAULTS[f.k]?" (edited)":""),INPUTS[f.k]]));
+  });
+  /* Not editable on the page, and not optional to the arithmetic. The three
+     repair bands alone are ~$0.056/mi at the default window. */
+  [["Repair reserve $/mi, under 100k",rr.under_100k],
+   ["Repair reserve $/mi, 100k-150k",rr["100k_to_150k"]],
+   ["Repair reserve $/mi, over 150k",rr.over_150k],
+   ["Financing mode",INPUTS.financing_mode],
+   ["Cash opportunity rate",INPUTS.cash_opportunity_rate],
+   ["Loan APR",INPUTS.loan_apr],
+   ["Down payment share",INPUTS.down_payment_pct],
+   ["Average outstanding balance factor",INPUTS.avg_outstanding_balance_factor],
+   ["Sales tax rate",INPUTS.sales_tax_rate],
+   ["Industry average 5-year depreciation",INPUTS.industry_avg_5yr_deprec]
+  ].forEach(function(p){lines.push(csvRow(p))});
+  lines.push("");
+  lines.push(csvRow(["WEIGHT","VALUE"]));
+  AXES.forEach(function(a,i){lines.push(csvRow([a[0],W[i]]))});
+  lines.push("");
+  lines.push(csvRow(["Preset",PRESET]));
+  lines.push(csvRow(["Filter",FILT]));
+  lines.push(csvRow(["Selected",SEL||""]));
+  /* The fragment already encodes every edit, so one line makes the export
+     reproducible: paste it back and the page rebuilds this exact view. */
+  lines.push(csvRow(["View",location.href]));
+  lines.push("");
+  lines.push(csvRow(["rank","name","trim","tier","category","cost_per_mile","cost_per_year",
+    "buy_price","price_basis","mpg","fuel","on_frontier","total","value","cost_score",
+    "quality","longevity","reliability","comfort","efficiency","db_55mph","db_basis",
+    "transmission","engine","over_6000lb_gvwr","risk","longevity_source"]));
+  /* Every ranked row, not the 24 drawRanked shows -- "look at the data
+     yourself" is the whole point of the file. */
+  st.ranked.forEach(function(m,i){
+    lines.push(csvRow([i+1,m.name,m.trimName,m.tier,m.cat,m.cpm.toFixed(4),Math.round(m.peryr),
+      Math.round(m.price),m.priceBasis,m.mpg,m.fuel,m.onFront?"yes":"no",m.total,m.value,
+      m.cost.toFixed(1),m.quality,m.longevity,m.reliability,m.comfort,m.efficiency,
+      m.db55,m.dbMeasured?"measured":"estimated",m.transName,m.engineName,
+      m.heavy?"yes":"no",m.risk,m.longSource]));
+  });
+  return lines.join("\n");
+}
+document.getElementById("exportBtn").addEventListener("click",function(){
+  /* Leading BOM: Excel reads a CSV as the system codepage without it, and
+     mangles every name carrying an accent. */
+  var blob=new Blob([String.fromCharCode(0xFEFF)+buildExport(compute())],{type:"text/csv;charset=utf-8"});
+  var url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download="vehicle-frontier.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url)},0);
+});
+
 readHash();
 syncSliders();
 drawFields();
