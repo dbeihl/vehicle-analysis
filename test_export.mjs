@@ -39,7 +39,7 @@ const INPUTS = {
   repair_reserve_per_mile: { under_100k: 0.03, '100k_to_150k': 0.06, over_150k: 0.1 },
   financing_mode: 'cash', cash_opportunity_rate: 0.045, loan_apr: 0.065,
   down_payment_pct: 0.2, avg_outstanding_balance_factor: 0.55,
-  sales_tax_rate: 0.07, industry_avg_5yr_deprec: 0.418,
+  sales_tax_rate: 0.07, industry_avg_5yr_deprec: 0.418, repair_cost_spread_ratio: 2.66,
 };
 const DEFAULTS = { ...INPUTS, annual_miles: 55000 };  // annual_miles is edited
 const FIELDS = [{ k: 'annual_miles', l: 'Annual miles' }, { k: 'gas_per_gal', l: 'Gas $/gal' }];
@@ -82,7 +82,8 @@ if (body.length !== ROWS) {
 /* Every assumption that has no field on the page must still be in the file,
    or the export cannot reproduce the numbers printed beside it. */
 for (const label of ['Repair reserve $/mi, over 150k', 'Sales tax rate', 'Loan APR',
-  'Industry average 5-year depreciation', 'Cash opportunity rate']) {
+  'Industry average 5-year depreciation', 'Cash opportunity rate',
+  'Repair cost spread, worst/best']) {
   if (!csv.includes(label)) throw new Error(`export is missing the ${label} assumption`);
 }
 if (!csv.includes('Annual miles (edited),60000')) {

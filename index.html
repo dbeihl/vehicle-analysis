@@ -170,7 +170,11 @@
     </div>
     <p class="fine">
       Each slider carries a provenance tag, because the six axes are not equally trustworthy.
-      <strong>Cost</strong> is computed from the workbook. <strong>Efficiency</strong> is EPA and observed MPG.
+      <strong>Cost</strong> is computed from the workbook, with one judgment in it: the
+      repair reserve is scaled by each vehicle's reliability score, so the least reliable
+      row carries about 2.2x the reserve of the most reliable. Reliability therefore
+      reaches the chart twice — as dollars here, and as time in the shop on its own axis.
+      <strong>Efficiency</strong> is EPA and observed MPG.
       <strong>Comfort</strong> is the strongest of the subjective three — it starts from actual decibel-meter
       readings at 55 mph (median across measured trims), then subtracts points for documented seat complaints
       and body-on-frame ride harshness; models tagged "estimated" had no published reading.
@@ -340,11 +344,11 @@ var FILTERS=[
  {k:"three",l:"Three-row"},{k:"t1",l:"Tier 1 only"},{k:"not3",l:"Exclude Tier 3"}
 ];
 var AXES=[
- ["Cost","computed","Total cost per mile, all-in"],
+ ["Cost","computed + judgment","Cost per mile; repair reserve scaled by the reliability guess"],
  ["Quality","judgment","Drivetrain architecture and known failure risk"],
  ["Longevity","iSeeCars","Odds of still running past 250k"],
  ["Efficiency","EPA/observed","Real highway MPG"],
- ["Reliability","SWAG","Brand record minus documented failure patterns"],
+ ["Reliability","SWAG","Time in the shop, not dollars -- the dollars are in Cost"],
  ["Comfort","measured dB","Cabin noise at 55 mph, seat and ride penalties"]
 ];
 var KEYS=["cost","quality","longevity","efficiency","reliability","comfort"];
@@ -836,6 +840,7 @@ function buildExport(st){
   [["Repair reserve $/mi, under 100k",rr.under_100k],
    ["Repair reserve $/mi, 100k-150k",rr["100k_to_150k"]],
    ["Repair reserve $/mi, over 150k",rr.over_150k],
+   ["Repair cost spread, worst/best",INPUTS.repair_cost_spread_ratio],
    ["Financing mode",INPUTS.financing_mode],
    ["Cash opportunity rate",INPUTS.cash_opportunity_rate],
    ["Loan APR",INPUTS.loan_apr],
