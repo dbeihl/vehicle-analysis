@@ -216,6 +216,28 @@ def price_problems(rows):
                     f'{name}: {field} of ${amount:,.0f} is outside the plausible '
                     f'USD range ${lo:,}-${hi:,}. All figures in this project are '
                     f'USD; check for a foreign-currency or decimal-point error')
+
+        # Complaint evidence is all-or-nothing per row, for the same reason a
+        # price is: a share with no count cannot be judged against the
+        # threshold, and a count with no share describes nothing.
+        complaint_fields = ('complaint_severity_share', 'complaint_n', 'complaint_years')
+        present = [f for f in complaint_fields if str(v.get(f, '')).strip() != '']
+        if present and len(present) != len(complaint_fields):
+            missing = [f for f in complaint_fields if f not in present]
+            problems.append(f'{name}: complaint evidence is incomplete; '
+                            f'missing {", ".join(missing)}')
+        if 'complaint_severity_share' in present:
+            try:
+                share = float(v['complaint_severity_share'])
+            except ValueError:
+                problems.append(f'{name}: complaint_severity_share is not a number: '
+                                f'{v["complaint_severity_share"]!r}')
+            else:
+                if not 0.0 <= share <= 1.0:
+                    problems.append(
+                        f'{name}: complaint_severity_share of {share} is outside 0-1. '
+                        f'It is a fraction of that vehicle\'s own complaints, not a '
+                        f'percentage')
     return problems
 
 
@@ -313,7 +335,13 @@ def build_models(rows, inp):
                            else None),
             'quality': num(v['quality']), 'longevity': num(v['longevity']),
             'efficiency': scale(v['mpg'], mlo, mhi),
-            'reliability': num(v['reliability']), 'comfort': num(v['comfort']),
+            'reliability': num(v['reliability']),
+            'complaintSeverity': (float(v['complaint_severity_share'])
+                                  if str(v.get('complaint_severity_share', '')).strip() != ''
+                                  else None),
+            'complaintN': (int(float(v['complaint_n']))
+                           if str(v.get('complaint_n', '')).strip() != '' else 0),
+            'comfort': num(v['comfort']),
             'db55': num(v['db55']), 'dbMeasured': v['db_measured'],
             'transName': v['transmission'], 'engineName': v['engine'],
             'longSource': v['longevity_source'], 'risk': v['risk'],

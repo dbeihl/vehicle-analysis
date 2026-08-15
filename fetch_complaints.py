@@ -111,7 +111,29 @@ def main():
             print(f'{name}: {entry["n"] if entry else "no data"}', flush=True)
     (ROOT / 'data' / 'complaints.json').write_text(
         json.dumps(out, indent=1, sort_keys=True) + '\n')
-    print(f'wrote data/complaints.json for {len(out)}/{len(names)} nameplates')
+
+    # Write the derived columns back into the dataset. Hand-entering 79 rows
+    # from a file this script just produced would be transcription with no
+    # judgment in it, and the two copies would drift on the first refetch.
+    path = ROOT / 'data' / 'vehicles.csv'
+    with open(path, newline='') as fh:
+        reader = csv.DictReader(fh)
+        fieldnames = list(reader.fieldnames)
+        rows = list(reader)
+    for col in ('complaint_severity_share', 'complaint_n', 'complaint_years'):
+        if col not in fieldnames:
+            fieldnames.append(col)
+    for r in rows:
+        entry = out.get(r['name'])
+        r['complaint_severity_share'] = f"{entry['severity_share']:.4f}" if entry else ''
+        r['complaint_n'] = str(entry['n']) if entry else ''
+        r['complaint_years'] = '|'.join(str(y) for y in entry['years']) if entry else ''
+    with open(path, 'w', newline='') as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f'wrote data/complaints.json and updated {len(rows)} rows '
+          f'in data/vehicles.csv ({len(out)} with evidence)')
 
 
 if __name__ == '__main__':

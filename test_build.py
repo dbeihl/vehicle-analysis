@@ -49,6 +49,7 @@ def main():
     check_input_ranges()
     check_collapse_order()
     check_complaint_classification()
+    check_complaint_columns()
     check_export()
     check_price_resolution()
     check_emitted_schema(real)
@@ -594,6 +595,29 @@ def check_complaint_classification():
     assert fc.severity_share(few) == fc.severity_share(many) == 0.5, \
         'severity share must be volume-independent'
     print('  ok: complaint severity classification')
+
+
+def check_complaint_columns():
+    """A partial complaint record must be rejected, not half-used.
+
+    Same rule the price columns already follow: metadata claiming provenance
+    the figure does not have reads exactly like a verified figure once it
+    reaches the page.
+    """
+    base = dict(price='20000', category='Test cat', name='T', trim='unspecified')
+    full = dict(base, complaint_severity_share='0.6', complaint_n='120',
+                complaint_years='2019|2021|2023')
+    assert not build.price_problems([full]), \
+        'a complete complaint record must pass'
+    for missing in ('complaint_severity_share', 'complaint_n', 'complaint_years'):
+        partial = dict(full)
+        partial[missing] = ''
+        assert build.price_problems([partial]), \
+            f'a complaint record missing {missing} must be rejected'
+    # A share is a fraction. 60 is a percentage someone forgot to divide.
+    assert build.price_problems([dict(full, complaint_severity_share='60')]), \
+        'a severity share outside 0-1 must be rejected'
+    print('  ok: complaint column provenance')
 
 
 if __name__ == '__main__':
