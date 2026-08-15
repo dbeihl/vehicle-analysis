@@ -363,8 +363,23 @@ if (VA.repairReliability(evidenced, minInputs) !== 0) {
 if (VA.repairReliability(thin, minInputs) !== 100) {
   throw new Error('a vehicle one complaint below the threshold must take the prior');
 }
+/* Exactly at the threshold, which is the comparison this whole feature turns
+   on. Without this fixture, changing >= to < in repairReliability leaves the
+   entire suite green -- no real vehicle sits at exactly 40 complaints, so the
+   data cannot catch it either. */
+const atThreshold = { reliability: 100, complaintSeverity: 0.95, complaintN: 40 };
+if (VA.repairReliability(atThreshold, minInputs) !== 0) {
+  throw new Error('a vehicle at exactly complaint_min_n must take its own '
+    + 'evidence, not the prior');
+}
 if (VA.repairReliability(none, minInputs) !== 100) {
   throw new Error('a vehicle with no complaint data must take the prior');
+}
+/* A severity share of exactly 0 is a real measurement -- every complaint was
+   cheap -- not a missing value. A truthy guard would send it to the prior. */
+const allCheap = { reliability: 20, complaintSeverity: 0, complaintN: 200 };
+if (VA.repairReliability(allCheap, minInputs) !== 100) {
+  throw new Error('a severity share of 0 is a measurement, not an absence');
 }
 /* The off switch is a large number, not zero -- opposite of the spread
    ratio, whose neutral is 1. Getting this backwards silently sends every
