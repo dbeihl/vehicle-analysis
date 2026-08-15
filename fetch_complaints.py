@@ -10,11 +10,25 @@ highest counts belong to the RAV4 and CR-V, the best-selling crossovers in the
 country. The fraction of a vehicle's own complaints that name an expensive
 subsystem has the fleet size cancel out of it exactly.
 
+A DEGRADED RUN WRITES NOTHING. If any model-year query failed -- a timeout, a
+gateway 500, anything that is not a clean answer or NHTSA's "no data" 400 --
+this script leaves data/complaints.json and data/vehicles.csv exactly as it
+found them, prints which nameplates failed, and exits 1. A 400 is not a
+failure; it is NHTSA saying it has nothing for that model year.
+
+The cached files are the better data. A partial pull silently understates a
+nameplate's count, which can drop it below complaint_min_n, flip it from
+measured to judgment and change its cost, with nothing in the persisted files
+to show for it -- a warning printed after the write is a warning nobody reads
+six months later. Refusing to write is the only signal that survives.
+
 Run: python3 fetch_complaints.py   (several minutes; rewrites data/complaints.json)
+     python3 fetch_complaints.py --allow-partial   (write anyway, deliberately)
 """
 import csv
 import json
 import pathlib
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -126,9 +140,8 @@ def one(name):
                   'years': years}, failed
 
 
-def main():
-    rows = list(csv.DictReader(open(ROOT / 'data' / 'vehicles.csv')))
-    names = sorted({r['name'] for r in rows})
+def collect(names):
+    """Fetch every nameplate. Returns (entries, failures-by-nameplate)."""
     out, failures = {}, {}
     with ThreadPoolExecutor(max_workers=6) as pool:
         for name, entry, failed in pool.map(one, names):
@@ -138,13 +151,18 @@ def main():
                 failures[name] = failed
             note = f' -- {failed} of {len(YEARS)} model years FAILED' if failed else ''
             print(f'{name}: {entry["n"] if entry else "no data"}{note}', flush=True)
-    (ROOT / 'data' / 'complaints.json').write_text(
+    return out, failures
+
+
+def write_outputs(out, root=ROOT):
+    """Persist the cache and rewrite the three derived columns. Returns rows."""
+    (root / 'data' / 'complaints.json').write_text(
         json.dumps(out, indent=1, sort_keys=True) + '\n')
 
     # Write the derived columns back into the dataset. Hand-entering 79 rows
     # from a file this script just produced would be transcription with no
     # judgment in it, and the two copies would drift on the first refetch.
-    path = ROOT / 'data' / 'vehicles.csv'
+    path = root / 'data' / 'vehicles.csv'
     with open(path, newline='') as fh:
         reader = csv.DictReader(fh)
         fieldnames = list(reader.fieldnames)
@@ -159,17 +177,47 @@ def main():
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
-    print(f'wrote data/complaints.json and updated {len(rows)} rows '
+    return len(rows)
+
+
+def persist(out, failures, root=ROOT, allow_partial=False):
+    """Write the results, or refuse to. Returns the process exit code.
+
+    A failed query and a vehicle with little history are indistinguishable
+    once they reach the files, so a degraded run must not reach them. The
+    cached copy is the better data: it was written by a run that answered
+    every query, and overwriting it with a partial pull is the loss. Only
+    --allow-partial, typed on purpose, lets a gap through.
+    """
+    if failures and not allow_partial:
+        print(f'REFUSED: {sum(failures.values())} model-year queries failed across '
+              f'{len(failures)} nameplates, so this pull understates them: '
+              + ', '.join(sorted(failures)))
+        print('data/complaints.json and data/vehicles.csv are UNCHANGED. A partial '
+              'pull can drop a nameplate below complaint_min_n and flip it from '
+              'measured to judgment with nothing in the files to show for it. '
+              'Re-run, or pass --allow-partial to overwrite the cache anyway.')
+        return 1
+    rows = write_outputs(out, root)
+    print(f'wrote data/complaints.json and updated {rows} rows '
           f'in data/vehicles.csv ({len(out)} with evidence)')
-    # A partial fetch and a vehicle with little history look identical in the
-    # output file, so the difference has to be said out loud here.
     if failures:
-        print(f'WARNING: {sum(failures.values())} model-year queries failed across '
-              f'{len(failures)} nameplates, which now understate their complaint '
-              f'history. Re-run before trusting them: ' + ', '.join(sorted(failures)))
+        print(f'WARNING: written with --allow-partial despite {sum(failures.values())} '
+              f'failed queries across {len(failures)} nameplates, which now '
+              f'understate their complaint history: ' + ', '.join(sorted(failures)))
     else:
         print('every model-year query answered: no silent gaps')
+    return 0
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else list(argv)
+    allow_partial = '--allow-partial' in argv
+    rows = list(csv.DictReader(open(ROOT / 'data' / 'vehicles.csv')))
+    names = sorted({r['name'] for r in rows})
+    out, failures = collect(names)
+    return persist(out, failures, allow_partial=allow_partial)
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

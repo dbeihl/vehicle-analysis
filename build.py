@@ -238,6 +238,20 @@ def price_problems(rows):
                         f'{name}: complaint_severity_share of {share} is outside 0-1. '
                         f'It is a fraction of that vehicle\'s own complaints, not a '
                         f'percentage')
+        if 'complaint_n' in present:
+            try:
+                count = int(str(v['complaint_n']).strip())
+            except ValueError:
+                problems.append(f'{name}: complaint_n is not a whole number: '
+                                f'{v["complaint_n"]!r}. It is a count of complaints, '
+                                f'and it is read back with int() -- a fraction is '
+                                f'silently truncated toward the threshold')
+            else:
+                if count < 0:
+                    problems.append(
+                        f'{name}: complaint_n of {count} is negative. It is a count '
+                        f'of complaints, and it is what complaint_min_n is compared '
+                        f'against')
     return problems
 
 

@@ -50,6 +50,7 @@ def main():
     check_collapse_order()
     check_complaint_classification()
     check_complaint_columns()
+    check_fetch_refusal()
     check_export()
     check_price_resolution()
     check_emitted_schema(real)
@@ -631,7 +632,99 @@ def check_complaint_columns():
     # A share is a fraction. 60 is a percentage someone forgot to divide.
     assert build.price_problems([dict(full, complaint_severity_share='60')]), \
         'a severity share outside 0-1 must be rejected'
+    # The count is what complaint_min_n is compared against, so it decides
+    # whether a row is described by its own evidence or by the brand prior.
+    # Unvalidated, a bad one either crashes at int(float(...)) in
+    # build_models() or quietly misbehaves against the threshold -- '12.5'
+    # truncates to 12, a negative sorts below every threshold forever.
+    for bad in ('twelve', '', '12.5', '-1', '1e3'):
+        # '' is caught by the all-or-nothing rule above; the rest have to be
+        # caught by a check of their own.
+        assert build.price_problems([dict(full, complaint_n=bad)]), \
+            f'complaint_n of {bad!r} must be rejected'
+    assert not build.price_problems([dict(full, complaint_n='0')]), \
+        'zero complaints is a real count and must pass'
     print('  ok: complaint column provenance')
+
+
+def check_fetch_refusal():
+    """A degraded fetch must not overwrite the committed data.
+
+    fetch_complaints.py used to write both files and warn afterwards, so a
+    year that timed out simply went missing from the persisted count. That
+    can drop a nameplate below complaint_min_n, flip it from measured to
+    judgment and change its cost, with the only trace in console output
+    nobody reads later. The cached files are the better data.
+
+    Driven through persist() with a temp root -- the refusal is a property of
+    what gets written, so the test writes real files and reads them back
+    rather than trusting a return value.
+    """
+    import contextlib
+    import io
+    import shutil
+    import tempfile
+
+    import fetch_complaints as fc
+
+    cached_json = '{"CACHED": 1}\n'
+    cached_csv = 'name,complaint_severity_share,complaint_n,complaint_years\n' \
+                 'Chevrolet Tahoe,0.7568,740,2019|2021|2023\n'
+    entry = {'severity_share': 0.5, 'n': 8, 'years': [2019]}
+
+    def fresh_root():
+        root = pathlib.Path(tempfile.mkdtemp())
+        (root / 'data').mkdir()
+        (root / 'data' / 'complaints.json').write_text(cached_json)
+        (root / 'data' / 'vehicles.csv').write_text(cached_csv)
+        return root
+
+    # Degraded: refuse, keep both files byte-for-byte, and say enough that a
+    # reader knows what failed and how to override it on purpose.
+    root = fresh_root()
+    try:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = fc.persist({'Chevrolet Tahoe': entry}, {'Ford F-150': 2}, root=root)
+        said = buf.getvalue()
+        assert code != 0, 'a run with a failed query must exit non-zero'
+        assert (root / 'data' / 'complaints.json').read_text() == cached_json, \
+            'a degraded run overwrote data/complaints.json'
+        assert (root / 'data' / 'vehicles.csv').read_text() == cached_csv, \
+            'a degraded run rewrote the complaint columns in data/vehicles.csv'
+        assert 'Ford F-150' in said, \
+            'the refusal must name the nameplate that failed'
+        assert '--allow-partial' in said, \
+            'the refusal must say how to take the partial data deliberately'
+    finally:
+        shutil.rmtree(root)
+
+    # Clean: the same call must actually write, or the check above proves
+    # nothing -- a persist() that never writes would pass it too.
+    root = fresh_root()
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = fc.persist({'Chevrolet Tahoe': entry}, {}, root=root)
+        assert code == 0, 'a clean run must succeed'
+        assert (root / 'data' / 'complaints.json').read_text() != cached_json, \
+            'a clean run did not rewrite data/complaints.json'
+        assert '0.5000,8,2019' in (root / 'data' / 'vehicles.csv').read_text(), \
+            'a clean run did not rewrite the complaint columns'
+    finally:
+        shutil.rmtree(root)
+
+    # The override exists and works, or the refusal is a dead end.
+    root = fresh_root()
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = fc.persist({'Chevrolet Tahoe': entry}, {'Ford F-150': 2},
+                              root=root, allow_partial=True)
+        assert code == 0, '--allow-partial must let a degraded run through'
+        assert (root / 'data' / 'complaints.json').read_text() != cached_json, \
+            '--allow-partial must actually write'
+    finally:
+        shutil.rmtree(root)
+    print('  ok: a degraded complaint fetch refuses to persist')
 
 
 if __name__ == '__main__':

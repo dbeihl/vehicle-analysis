@@ -143,6 +143,46 @@ if (fields(body[10])[basisIdx] !== 'judgment') {
     + `judgment, got ${fields(body[10])[basisIdx]}`);
 }
 
+/* A label saying 'measured' has to arrive with the measurement it names, and
+   with the figure that measurement produced -- otherwise the file asserts a
+   row is evidence-backed while omitting the evidence, and the cost per mile
+   beside it cannot be reproduced. That is the same defect that renamed
+   reliability_basis to repair_basis, one column over. */
+const shareIdx = fields(lines[headerIdx]).indexOf('complaint_severity_share');
+const effIdx = fields(lines[headerIdx]).indexOf('repair_reliability');
+if (shareIdx < 0) throw new Error('the export must carry complaint_severity_share');
+if (effIdx < 0) throw new Error('the export must carry repair_reliability');
+
+const measured = fields(body[0]);
+if (measured[shareIdx] !== '0.6000') {
+  throw new Error(`a measured row must carry its own severity share, got `
+    + `${JSON.stringify(measured[shareIdx])}`);
+}
+const expected = VA.repairReliability(ranked[0], INPUTS).toFixed(2);
+if (measured[effIdx] !== expected) {
+  throw new Error(`a measured row must carry the figure that drove its repair `
+    + `reserve (${expected}), got ${JSON.stringify(measured[effIdx])}`);
+}
+/* Not the prior: the whole point is that the effective figure differs from
+   the hand-typed reliability on a measured row. */
+const relIdx = fields(lines[headerIdx]).indexOf('reliability');
+if (measured[effIdx] === measured[relIdx]) {
+  throw new Error('repair_reliability on a measured row is just the prior again');
+}
+
+/* Empty, and asserted as exactly empty: `undefined` or `0` would both slip
+   past a truthiness check, and a severity share of 0 is a real measurement --
+   a vehicle whose complaints never name an expensive subsystem -- which must
+   not be confused with having none. */
+const fallback = fields(body[10]);
+for (const [label, idx] of [['complaint_severity_share', shareIdx],
+  ['repair_reliability', effIdx]]) {
+  if (fallback[idx] !== '') {
+    throw new Error(`a judgment row must leave ${label} empty rather than `
+      + `filling it, got ${JSON.stringify(fallback[idx])}`);
+  }
+}
+
 const nameIdx = fields(lines[headerIdx]).indexOf('name');
 const riskIdx = fields(lines[headerIdx]).indexOf('risk');
 const nasty = fields(body[5]);

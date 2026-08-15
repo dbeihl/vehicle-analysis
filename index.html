@@ -923,7 +923,8 @@ function buildExport(st){
   lines.push("");
   lines.push(csvRow(["rank","name","trim","tier","category","cost_per_mile","cost_per_year",
     "buy_price","price_basis","mpg","fuel","on_frontier","total","value","cost_score",
-    "quality","longevity","reliability","repair_basis","comfort","efficiency","db_55mph","db_basis",
+    "quality","longevity","reliability","repair_basis","complaint_severity_share",
+    "repair_reliability","comfort","efficiency","db_55mph","db_basis",
     "transmission","engine","over_6000lb_gvwr","risk","longevity_source"]));
   /* Every ranked row, not the 24 drawRanked shows -- "look at the data
      yourself" is the whole point of the file.
@@ -938,12 +939,32 @@ function buildExport(st){
      It is repair_basis, not reliability_basis: it labels the figure the
      repair reserve used, and the `reliability` column beside it always
      carries the hand-typed prior. Naming it after that neighbour would put
-     `measured` next to a number that is nothing of the kind. */
+     `measured` next to a number that is nothing of the kind.
+
+     The two columns after it carry the evidence that label claims:
+     complaint_severity_share is the measurement, repair_reliability is the
+     figure it produced and the one repairMultiplier actually raised the
+     spread ratio to. Without them the file asserts a row is measured while
+     omitting the measurement, and its cost per mile cannot be reproduced
+     from the numbers beside it.
+
+     Both are blank on a judgment row, gated on the same relBasis the label
+     came from so a cell and its label cannot disagree. Blank, not zero: a
+     severity share of 0 is a real measurement -- a vehicle whose complaints
+     never name an expensive subsystem -- and must not read as absence. On
+     those rows the effective figure IS the `reliability` cell verbatim, so
+     nothing is lost by not repeating it, while repeating it would look like
+     a second, independently derived number. Twelve rows also reach here
+     with complaintSeverity null, which has no toFixed. */
   st.ranked.forEach(function(m,i){
     var relBasis=VA.repairBasis(m,INPUTS);
+    var measured=relBasis==="measured";
     lines.push(csvRow([i+1,m.name,m.trimName,m.tier,m.cat,m.cpm.toFixed(4),Math.round(m.peryr),
       Math.round(m.price),m.priceBasis,m.mpg,m.fuel,m.onFront?"yes":"no",m.total,m.value,
-      m.cost.toFixed(1),m.quality,m.longevity,m.reliability,relBasis,m.comfort,m.efficiency,
+      m.cost.toFixed(1),m.quality,m.longevity,m.reliability,relBasis,
+      measured?m.complaintSeverity.toFixed(4):"",
+      measured?VA.repairReliability(m,INPUTS).toFixed(2):"",
+      m.comfort,m.efficiency,
       m.db55,m.dbMeasured?"measured":"estimated",m.transName,m.engineName,
       m.heavy?"yes":"no",m.risk,m.longSource]));
   });
