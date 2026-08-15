@@ -40,6 +40,7 @@ const INPUTS = {
   financing_mode: 'cash', cash_opportunity_rate: 0.045, loan_apr: 0.065,
   down_payment_pct: 0.2, avg_outstanding_balance_factor: 0.55,
   sales_tax_rate: 0.07, industry_avg_5yr_deprec: 0.418, repair_cost_spread_ratio: 2.66,
+  complaint_min_n: 40,
 };
 const DEFAULTS = { ...INPUTS, annual_miles: 55000 };  // annual_miles is edited
 const FIELDS = [{ k: 'annual_miles', l: 'Annual miles' }, { k: 'gas_per_gal', l: 'Gas $/gal' }];
@@ -54,6 +55,7 @@ function fakeRow(i) {
     quality: 80, longevity: 70, reliability: 60, comfort: 50, efficiency: 40,
     db55: 66.5, dbMeasured: true, transName: '10-speed auto', engineName: 'V8',
     heavy: true, risk: 'Fine', longSource: 'iSeeCars',
+    complaintSeverity: 0.6, complaintN: 120,
   };
 }
 
@@ -83,7 +85,7 @@ if (body.length !== ROWS) {
    or the export cannot reproduce the numbers printed beside it. */
 for (const label of ['Repair reserve $/mi, over 150k', 'Sales tax rate', 'Loan APR',
   'Industry average 5-year depreciation', 'Cash opportunity rate',
-  'Repair cost spread, worst/best']) {
+  'Repair cost spread, worst/best', 'Complaint evidence threshold']) {
   if (!csv.includes(label)) throw new Error(`export is missing the ${label} assumption`);
 }
 if (!csv.includes('Annual miles (edited),60000')) {
@@ -118,10 +120,20 @@ body.forEach((line, i) => {
   if (n !== width) throw new Error(`row ${i + 1} has ${n} fields against ${width} columns`);
 });
 
+/* The basis has to travel with the number. A file that says a vehicle scores
+   62 without saying whether that came from its own complaint record or from a
+   brand prior invites the reader to treat both the same way. */
+const basisIdx = fields(lines[headerIdx]).indexOf('reliability_basis');
+if (basisIdx < 0) throw new Error('the export must carry reliability_basis');
+if (!['measured', 'judgment'].includes(fields(body[0])[basisIdx])) {
+  throw new Error(`reliability_basis must be measured or judgment, got `
+    + fields(body[0])[basisIdx]);
+}
+
 const nasty = fields(body[5]);
 if (nasty[1] !== 'Comma, Motors') throw new Error(`name lost its comma: ${nasty[1]}`);
-if (nasty[25] !== 'Runs hot, and the "known" fix is a recall,\rper NHTSA') {
-  throw new Error(`risk text did not survive escaping: ${nasty[25]}`);
+if (nasty[26] !== 'Runs hot, and the "known" fix is a recall,\rper NHTSA') {
+  throw new Error(`risk text did not survive escaping: ${nasty[26]}`);
 }
 
 console.log(`ok: export carries ${body.length} vehicles across ${width} columns, `

@@ -380,7 +380,7 @@ var AXES=[
  ["Quality","judgment","Drivetrain architecture and known failure risk"],
  ["Longevity","iSeeCars","Odds of still running past 250k"],
  ["Efficiency","EPA/observed","Real highway MPG"],
- ["Reliability","SWAG","Time in the shop, not dollars -- the dollars are in Cost"],
+ ["Reliability","SWAG","Time in the shop, not dollars -- the dollars come from complaints"],
  ["Comfort","measured dB","Cabin noise at 55 mph, seat and ride penalties"]
 ];
 var KEYS=["cost","quality","longevity","efficiency","reliability","comfort"];
@@ -580,6 +580,8 @@ function compute(){
     var bp=VA.buyPrice(m,INPUTS);
     m.priceBasis=bp.basis;
     m.price=bp.price;
+    m.relBasis=(m.complaintSeverity!==null && m.complaintSeverity!==undefined
+                && m.complaintN>=INPUTS.complaint_min_n)?'measured':'judgment';
   });
   var bad=MODELS.filter(function(m){return !isFinite(m.cpm)});
   if(bad.length){
@@ -757,6 +759,12 @@ function drawDetail(st){
     '<div class="bars">'+
       bar('Quality',m.quality)+bar('Longevity',m.longevity)+
       bar('Reliability',m.reliability)+bar('Comfort',m.comfort)+'</div>'+
+    '<div class="meta">Repair cost uses '+
+      (m.relBasis==='measured'
+        ? 'this model\'s own complaint record ('+m.complaintN+' complaints, '
+          +Math.round(m.complaintSeverity*100)+'% on expensive subsystems)'
+        : 'the brand-level judgment — too few complaints to describe this model')+
+    '</div>'+
     '<div class="meta">Cabin noise '+m.db55.toFixed(1)+' dB at 55 mph '+
       (m.dbMeasured?'<span style="color:var(--signal)">(measured)</span>':'<span style="color:var(--ink3)">(estimated)</span>')+'</div>'+
     '<div class="meta">'+esc(m.transName)+' · '+esc(m.engineName)+' · '+(m.heavy?'over':'under')+' 6,000 lb GVWR</div>'+
@@ -873,6 +881,7 @@ function buildExport(st){
    ["Repair reserve $/mi, 100k-150k",rr["100k_to_150k"]],
    ["Repair reserve $/mi, over 150k",rr.over_150k],
    ["Repair cost spread, worst/best",INPUTS.repair_cost_spread_ratio],
+   ["Complaint evidence threshold",INPUTS.complaint_min_n],
    ["Financing mode",INPUTS.financing_mode],
    ["Cash opportunity rate",INPUTS.cash_opportunity_rate],
    ["Loan APR",INPUTS.loan_apr],
@@ -894,14 +903,21 @@ function buildExport(st){
   lines.push("");
   lines.push(csvRow(["rank","name","trim","tier","category","cost_per_mile","cost_per_year",
     "buy_price","price_basis","mpg","fuel","on_frontier","total","value","cost_score",
-    "quality","longevity","reliability","comfort","efficiency","db_55mph","db_basis",
+    "quality","longevity","reliability","reliability_basis","comfort","efficiency","db_55mph","db_basis",
     "transmission","engine","over_6000lb_gvwr","risk","longevity_source"]));
   /* Every ranked row, not the 24 drawRanked shows -- "look at the data
-     yourself" is the whole point of the file. */
+     yourself" is the whole point of the file.
+
+     The basis is derived here from the raw complaint fields rather than read
+     off m.relBasis: buildExport must produce a correct column for any row
+     array it is handed, not only one that happened to pass through compute()
+     first. */
   st.ranked.forEach(function(m,i){
+    var relBasis=(m.complaintSeverity!==null && m.complaintSeverity!==undefined
+                  && m.complaintN>=INPUTS.complaint_min_n)?"measured":"judgment";
     lines.push(csvRow([i+1,m.name,m.trimName,m.tier,m.cat,m.cpm.toFixed(4),Math.round(m.peryr),
       Math.round(m.price),m.priceBasis,m.mpg,m.fuel,m.onFront?"yes":"no",m.total,m.value,
-      m.cost.toFixed(1),m.quality,m.longevity,m.reliability,m.comfort,m.efficiency,
+      m.cost.toFixed(1),m.quality,m.longevity,m.reliability,relBasis,m.comfort,m.efficiency,
       m.db55,m.dbMeasured?"measured":"estimated",m.transName,m.engineName,
       m.heavy?"yes":"no",m.risk,m.longSource]));
   });
