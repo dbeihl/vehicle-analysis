@@ -75,7 +75,7 @@ Three columns join `data/vehicles.csv` beside `reliability`, giving it the prove
 
 ### Coverage is two-tier, and the page says so
 
-Thirteen nameplates have no complaint data and another thirteen fall below `k`. Those ride mostly or entirely on the prior.
+Twenty of the 79 fall back to the prior: thirteen have no complaint data at all, and seven more sit below the forty-complaint threshold.
 
 This is the failure mode the README already names for prices: "A partially corrected dataset is more misleading than a uniformly wrong one." The mitigation is the one the repo already uses — the `listed` / `scaled` / `estimate` badges. The detail panel gains a badge on the reliability figure:
 
