@@ -48,6 +48,7 @@ def main():
 
     check_input_ranges()
     check_collapse_order()
+    check_complaint_classification()
     check_export()
     check_price_resolution()
     check_emitted_schema(real)
@@ -560,6 +561,30 @@ def check_readme_counts(rows):
     pattern = (r'\*\*(?<!\d)' + str(observed) + r'(?!\d) of the (?<!\d)'
                + str(len(rows)) + r'(?!\d) rows carry an observed price today\.\*\*')
     assert re.search(pattern, readme), f'README is stale: expected "{claim}"'
+
+
+def check_complaint_classification():
+    """is_expensive() must key off the subsystem, not the whole string.
+
+    NHTSA returns a comma-separated component list, so a complaint naming
+    both a cosmetic and an expensive subsystem is expensive. Matching the
+    raw string with `in` would also catch 'ENGINE' inside 'ENGINE AND
+    ENGINE COOLING' by accident and miss 'POWER TRAIN' entirely when it
+    arrives second in the list.
+    """
+    import fetch_complaints as fc
+    for field in ('ENGINE', 'POWER TRAIN', 'SEATS, ENGINE',
+                  'ENGINE AND ENGINE COOLING', 'SERVICE BRAKES, HYDRAULIC'):
+        assert fc.is_expensive(field), f'{field!r} should count as expensive'
+    for field in ('SEATS', 'STRUCTURE', 'UNKNOWN OR OTHER', '', 'EXTERIOR LIGHTING'):
+        assert not fc.is_expensive(field), f'{field!r} should not count as expensive'
+
+    # A share is a ratio, so it must not move with the number of complaints.
+    few = [{'components': 'ENGINE'}, {'components': 'SEATS'}]
+    many = [{'components': 'ENGINE'}] * 50 + [{'components': 'SEATS'}] * 50
+    assert fc.severity_share(few) == fc.severity_share(many) == 0.5, \
+        'severity share must be volume-independent'
+    print('  ok: complaint severity classification')
 
 
 if __name__ == '__main__':

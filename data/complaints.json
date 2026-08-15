@@ -1,0 +1,576 @@
+{
+ "Cadillac Escalade": {
+  "n": 227,
+  "severity_share": 0.8766519823788547,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Cadillac Escalade ESV": {
+  "n": 187,
+  "severity_share": 0.9144385026737968,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Chevrolet Colorado": {
+  "n": 347,
+  "severity_share": 0.723342939481268,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Chevrolet Equinox": {
+  "n": 475,
+  "severity_share": 0.6694736842105263,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Chevrolet Silverado 1500": {
+  "n": 2192,
+  "severity_share": 0.8608576642335767,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Chevrolet Suburban": {
+  "n": 298,
+  "severity_share": 0.7550335570469798,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Chevrolet Tahoe": {
+  "n": 740,
+  "severity_share": 0.7567567567567568,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Chevrolet Traverse": {
+  "n": 571,
+  "severity_share": 0.7495621716287215,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Dodge Durango": {
+  "n": 360,
+  "severity_share": 0.49722222222222223,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Ford Edge": {
+  "n": 864,
+  "severity_share": 0.7858796296296297,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Ford Escape Hybrid": {
+  "n": 4,
+  "severity_share": 0.25,
+  "years": [
+   2021
+  ]
+ },
+ "Ford Expedition": {
+  "n": 766,
+  "severity_share": 0.7010443864229765,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Ford Explorer": {
+  "n": 803,
+  "severity_share": 0.44458281444582815,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Ford F-150": {
+  "n": 26,
+  "severity_share": 0.9615384615384616,
+  "years": [
+   2019
+  ]
+ },
+ "Ford Maverick (2.0T)": {
+  "n": 262,
+  "severity_share": 0.7709923664122137,
+  "years": [
+   2023
+  ]
+ },
+ "Ford Ranger": {
+  "n": 264,
+  "severity_share": 0.6856060606060606,
+  "years": [
+   2019
+  ]
+ },
+ "GMC Acadia": {
+  "n": 566,
+  "severity_share": 0.734982332155477,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "GMC Canyon": {
+  "n": 83,
+  "severity_share": 0.6506024096385542,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "GMC Sierra 1500": {
+  "n": 1583,
+  "severity_share": 0.8420720151610865,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "GMC Yukon": {
+  "n": 567,
+  "severity_share": 0.8712522045855379,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "GMC Yukon XL": {
+  "n": 393,
+  "severity_share": 0.8651399491094147,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Honda CR-V": {
+  "n": 1906,
+  "severity_share": 0.6421825813221406,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Honda CR-V Hybrid": {
+  "n": 527,
+  "severity_share": 0.6641366223908919,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Honda HR-V": {
+  "n": 965,
+  "severity_share": 0.2849740932642487,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Honda Passport": {
+  "n": 440,
+  "severity_share": 0.6090909090909091,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Honda Pilot": {
+  "n": 1425,
+  "severity_share": 0.5992982456140351,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Honda Ridgeline": {
+  "n": 455,
+  "severity_share": 0.5538461538461539,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Hyundai Palisade": {
+  "n": 810,
+  "severity_share": 0.4271604938271605,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Hyundai Santa Fe": {
+  "n": 560,
+  "severity_share": 0.5785714285714286,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Hyundai Santa Fe Hybrid": {
+  "n": 20,
+  "severity_share": 0.7,
+  "years": [
+   2021
+  ]
+ },
+ "Hyundai Tucson": {
+  "n": 577,
+  "severity_share": 0.7972270363951474,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Jeep Cherokee": {
+  "n": 1765,
+  "severity_share": 0.8538243626062323,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Jeep Compass": {
+  "n": 446,
+  "severity_share": 0.7802690582959642,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Jeep Gladiator": {
+  "n": 342,
+  "severity_share": 0.8157894736842105,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Jeep Grand Cherokee": {
+  "n": 1135,
+  "severity_share": 0.7330396475770925,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Jeep Grand Cherokee L": {
+  "n": 153,
+  "severity_share": 0.7189542483660131,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Jeep Grand Wagoneer": {
+  "n": 44,
+  "severity_share": 0.7045454545454546,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Jeep Wrangler": {
+  "n": 1967,
+  "severity_share": 0.8688357905439756,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Kia Sorento": {
+  "n": 535,
+  "severity_share": 0.6355140186915887,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Kia Sorento Hybrid": {
+  "n": 21,
+  "severity_share": 0.6666666666666666,
+  "years": [
+   2021
+  ]
+ },
+ "Kia Sportage": {
+  "n": 303,
+  "severity_share": 0.6237623762376238,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Kia Telluride": {
+  "n": 548,
+  "severity_share": 0.4233576642335766,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Lexus RX 350": {
+  "n": 129,
+  "severity_share": 0.26356589147286824,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Lincoln Navigator": {
+  "n": 108,
+  "severity_share": 0.6111111111111112,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Mazda CX-5": {
+  "n": 467,
+  "severity_share": 0.6873661670235546,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Mazda CX-9": {
+  "n": 101,
+  "severity_share": 0.6732673267326733,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Nissan Armada": {
+  "n": 91,
+  "severity_share": 0.7252747252747253,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Nissan Frontier (2022+)": {
+  "n": 28,
+  "severity_share": 0.6071428571428571,
+  "years": [
+   2019
+  ]
+ },
+ "Nissan Pathfinder (2022+)": {
+  "n": 175,
+  "severity_share": 0.5885714285714285,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Nissan Rogue": {
+  "n": 1288,
+  "severity_share": 0.6211180124223602,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Nissan Titan": {
+  "n": 45,
+  "severity_share": 0.6888888888888889,
+  "years": [
+   2019
+  ]
+ },
+ "Ram 1500": {
+  "n": 2123,
+  "severity_share": 0.7357512953367875,
+  "years": [
+   2019,
+   2021
+  ]
+ },
+ "Ram 2500 (Cummins)": {
+  "n": 294,
+  "severity_share": 0.6462585034013606,
+  "years": [
+   2019,
+   2021
+  ]
+ },
+ "Subaru Ascent": {
+  "n": 579,
+  "severity_share": 0.6390328151986183,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Subaru Forester": {
+  "n": 1111,
+  "severity_share": 0.31863186318631864,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Subaru Outback": {
+  "n": 1412,
+  "severity_share": 0.4121813031161473,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Toyota 4Runner": {
+  "n": 128,
+  "severity_share": 0.5390625,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Toyota Highlander (gas)": {
+  "n": 1131,
+  "severity_share": 0.6003536693191865,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Toyota Highlander Hybrid": {
+  "n": 30,
+  "severity_share": 0.23333333333333334,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Toyota RAV4 (gas)": {
+  "n": 1401,
+  "severity_share": 0.4382583868665239,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Toyota RAV4 Hybrid": {
+  "n": 51,
+  "severity_share": 0.35294117647058826,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Toyota Sequoia (pre-2023 5.7 V8)": {
+  "n": 11,
+  "severity_share": 0.45454545454545453,
+  "years": [
+   2019,
+   2021
+  ]
+ },
+ "Toyota Sienna Hybrid": {
+  "n": 100,
+  "severity_share": 0.43,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Toyota Tacoma (pre-2024 V6)": {
+  "n": 341,
+  "severity_share": 0.656891495601173,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Toyota Tundra (2007-2021 5.7 V8)": {
+  "n": 478,
+  "severity_share": 0.6882845188284519,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ },
+ "Toyota Venza": {
+  "n": 202,
+  "severity_share": 0.22277227722772278,
+  "years": [
+   2021,
+   2023
+  ]
+ },
+ "Volkswagen Atlas": {
+  "n": 1045,
+  "severity_share": 0.5253588516746411,
+  "years": [
+   2019,
+   2021,
+   2023
+  ]
+ }
+}
