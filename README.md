@@ -106,14 +106,14 @@ Clicking Reset restores all eleven assumption fields to their defaults. It does 
 
 - **Cost** is computed from the workbook, with one judgment inside it: the repair reserve is scaled by each vehicle's reliability score, `ratio^((50 - reliability)/100)`, where the ratio defaults to 2.66 — the worst-to-best spread in RepairPal's 2026 brand repair-cost averages (Toyota $441/yr, Land Rover $1,174/yr). What is sourced is the gap between two industry extremes, and neither brand is in this fleet. Using it here assumes this project's own 0 and 100 sit where Land Rover and Toyota sit, and that repair cost is log-linear in the score between them. Neither assumption is measured.
 
-The repair reserve is scaled by the reliability figure, and that figure now comes from each model's own NHTSA complaint record where it has one — the fraction of its complaints naming an expensive subsystem, on 60 of 79 nameplates. The other 19 fall back to the brand-level judgment, and the detail panel says which a row is using. Complaint counts themselves are never used: they scale with how many were sold, and NHTSA publishes no denominator.
+The repair reserve is scaled by the reliability figure, and that figure now comes from each model's own NHTSA complaint record where it has one — the fraction of its complaints naming an expensive subsystem, on 60 of 79 nameplates. The other 19 fall back to the brand-level judgment, and the detail panel says which a row is using. Complaint counts themselves are never used: they scale with how many were sold, and NHTSA publishes no denominator. The threshold does not catch everything: 15 of those 60 rows rest on only one or two of the three sampled model years, so a share drawn from one year sits in the same ranking as one drawn from three.
 
 Three knobs turn parts of this off, and they do not agree on what "off" means:
 
 | Input | Off value | Effect |
 | ----- | --------- | ------ |
 | `repair_cost_spread_ratio` | `1` | Every vehicle carries the same repair reserve |
-| `complaint_min_n` | above `2116` | Every vehicle falls back to the brand judgment |
+| `complaint_min_n` | `10000` | Every vehicle falls back to the brand judgment |
 | `scheduled_maint_per_mile` | `0` | Removes the flat maintenance line |
 
 - **Efficiency** is EPA and observed MPG.
@@ -128,7 +128,7 @@ Three knobs turn parts of this off, and they do not agree on what "off" means:
 - **Not tax advice, and none of it is modelled in this repo.** The tax analysis lives only on the spreadsheet's `Tax` tab; `build.py` and the page ignore it entirely. W-2 employees cannot deduct business mileage: the Tax Cuts and Jobs Act (TCJA) suspended it and the One Big Beautiful Bill Act (OBBBA, 2025) made that permanent. Section 179 and bonus depreciation at a 30-month turnover cadence are a timing benefit rather than a saving, because Section 1245 recapture takes it back as ordinary income on sale. Talk to a CPA.
 - **The depreciation curve is directional.** It comes from pooled asking-price cross-sections of ~327,000 listings, not the same VIN tracked over time.
 - **Several figures expire.** Fuel prices, IRS mileage rates, and the iSeeCars baselines all move annually. The tax law moved twice during the period the analysis covers.
-- **A guess now moves the dollars.** Reliability is one of the two axes this README calls an informed guess, and it scales the repair reserve, so the Cost axis is no longer purely computed. The spread's width is sourced; which vehicle sits where on the reliability scale is not. NHTSA complaint and TSB data and the UK DVSA MOT results are the path to replacing that guess with something measured.
+- **A guess still moves the dollars on 19 rows.** The other 60 take their repair reserve from the vehicle's own complaint record, but those 19 are scaled by the brand-level guess, so the Cost axis is not purely computed there. The spread's width is sourced either way; where a fallback vehicle sits on the reliability scale is not. The UK DVSA MOT results remain the unshipped path to measuring the Reliability axis itself, which is still a guess on all 79.
 
 - **The spreadsheet is no longer authoritative.** `data/vehicles.csv` is. The spreadsheet still holds the `Sources` and `Tax` tabs, which have no equivalent in the repo, but its `Models` tab stopped tracking the CSV once prices were corrected. `test_build.py` still uses its published figures as an oracle, which works because it compares against the untouched `price` column.
 

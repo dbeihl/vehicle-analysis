@@ -36,9 +36,12 @@ var VA = (function () {
 
   /* Fixed anchors, deliberately not the fleet's own min and max: a
      fleet-relative rescale would move every vehicle's cost whenever a row is
-     added. The observed range is 0.219 (Toyota Venza) to 0.944 (Cadillac
-     Escalade ESV), so these bracket it with a little headroom and a future
-     outlier clamps instead of rescaling its peers. */
+     added. Shares in the data run 0.2228 (Toyota Venza) to 0.9615 (Ford
+     F-150), so the anchors do NOT bracket the range: the F-150 sits above
+     ANCHOR_HIGH and scores 0 by clamping, which is the intended behavior --
+     an outlier clamps rather than rescaling its peers. No row clamps today:
+     the highest share among rows clearing complaint_min_n is 0.9144
+     (Escalade ESV), and the F-150's 26 complaints keep it on the prior. */
   var COMPLAINT_ANCHOR_LOW = 0.20, COMPLAINT_ANCHOR_HIGH = 0.95;
 
   function complaintScore(share) {

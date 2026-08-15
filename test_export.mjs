@@ -132,8 +132,8 @@ body.forEach((line, i) => {
    membership in the two valid strings alone would still pass an inverted
    ternary. Row 0 is above complaint_min_n (120 >= 40) and must read
    'measured'; row 10 is below it (10 < 40) and must read 'judgment'. */
-const basisIdx = fields(lines[headerIdx]).indexOf('reliability_basis');
-if (basisIdx < 0) throw new Error('the export must carry reliability_basis');
+const basisIdx = fields(lines[headerIdx]).indexOf('repair_basis');
+if (basisIdx < 0) throw new Error('the export must carry repair_basis');
 if (fields(body[0])[basisIdx] !== 'measured') {
   throw new Error(`row with 120 complaints against a threshold of 40 must be `
     + `measured, got ${fields(body[0])[basisIdx]}`);

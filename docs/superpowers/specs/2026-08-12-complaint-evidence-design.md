@@ -1,7 +1,7 @@
 # NHTSA complaint evidence into the repair multiplier
 
 Date: 2026-08-12
-Status: approved, not implemented
+Status: implemented on branch `complaint-evidence`, 2026-08-15. The counts below are the shipped ones.
 
 ## Problem
 
@@ -13,7 +13,7 @@ NHTSA publishes consumer complaints for free with no API key. This spec introduc
 
 ## What the data actually supports
 
-Measured across 66 of 79 nameplates, model years 2019/2021/2023 (the sampling `fetch_recalls.py` already uses).
+Measured across 67 of 79 nameplates, model years 2019/2021/2023 (the sampling `fetch_recalls.py` already uses).
 
 **Raw complaint counts are unusable.** They scale with fleet size, and NHTSA publishes no sales or registration denominator. The highest counts in this fleet are the RAV4, CR-V, Pilot, Outback and Forester — the best-selling crossovers in the US, all scored highly. The lowest are the Grand Wagoneer, Canyon and Navigator, all low-volume and scored poorly. Ranking on counts ranks sales.
 
@@ -24,11 +24,11 @@ Measured across 66 of 79 nameplates, model years 2019/2021/2023 (the sampling `f
 | Raw | -0.61 |
 | With vehicle category removed | -0.54 |
 
-Both figures are computed over the 59 nameplates carrying at least 40 complaints, so a vehicle with four complaints does not get a vote in the correlation. The design below uses that same threshold as its coverage rule.
+Both figures are computed over the 60 nameplates carrying at least 40 complaints, so a vehicle with four complaints does not get a vote in the correlation. The design below uses that same threshold as its coverage rule.
 
 The category effect is real but small: full-size body-on-frame SUVs average a 78% severe share against 55% for mid-size crossovers. Removing it costs only 0.07 of correlation, so severity share is not merely detecting trucks. A subjective score built from brand reputation is corroborated at -0.54 by data it was never derived from.
 
-**Where they disagree, the evidence compresses the prior's extremes.** Toyota's trucks are not exceptional on expensive-component complaints (Tundra and Tacoma sit mid-pack while scored 100.0), and the American vehicles are less catastrophic than scored (Ram 1500 at 2,116 complaints, Explorer at 796). Some of the raw gap is scale shape — the prior clusters at 100 while severity share spreads smoothly — so ordering agreement (-0.54) is the honest measure, not value differences.
+**Where they disagree, the evidence compresses the prior's extremes.** Toyota's trucks are not exceptional on expensive-component complaints (Tundra and Tacoma sit mid-pack while scored 100.0), and the American vehicles are less catastrophic than scored (Ram 1500 at 2,123 complaints, Explorer at 803). Some of the raw gap is scale shape — the prior clusters at 100 while severity share spreads smoothly — so ordering agreement (-0.54) is the honest measure, not value differences.
 
 ## Design
 
@@ -40,7 +40,7 @@ empirical(v) = 100 * (ANCHOR_HIGH - severity_share(v)) / (ANCHOR_HIGH - ANCHOR_L
 
 clamped to 0–100, with **`ANCHOR_LOW = 0.20`** and **`ANCHOR_HIGH = 0.95`**.
 
-The anchors are fixed, not the fleet's own min and max. A fleet-relative rescale would make every vehicle's cost move when a row is added — the same trap avoided by anchoring the spread multiplier at reliability 50 rather than the fleet median. The observed range is 0.219 (Toyota Venza) to 0.944 (Cadillac Escalade ESV), so these anchors bracket it with only slight headroom; a future vehicle outside them clamps rather than rescaling its peers.
+The anchors are fixed, not the fleet's own min and max. A fleet-relative rescale would make every vehicle's cost move when a row is added — the same trap avoided by anchoring the spread multiplier at reliability 50 rather than the fleet median. Shares in the shipped pull run 0.2228 (Toyota Venza) to 0.9615 (Ford F-150), so the anchors do not bracket the range: the F-150 sits above `ANCHOR_HIGH` and clamps to 0, which is the intended behaviour rather than a reason to rescale its peers. No row clamps today — the highest share among rows clearing the threshold is 0.9144 (Escalade ESV), and the F-150's 26 complaints keep it on the prior.
 
 ### Per-model evidence first, prior only as fallback
 
@@ -49,13 +49,13 @@ effective(v) = empirical(v)      when n(v) >= COMPLAINT_MIN
              = reliability(v)    otherwise
 ```
 
-**`COMPLAINT_MIN = 40`**, a new input `complaint_min_n`. Fifty-nine of the 79 nameplates clear it; twenty fall back to the prior.
+**`COMPLAINT_MIN = 40`**, a new input `complaint_min_n`. Sixty of the 79 nameplates clear it; nineteen fall back to the prior.
 
 An earlier draft of this spec blended the two by shrinkage — `n / (n + k)` — so that a vehicle's estimate was pulled toward the brand prior in proportion to how little evidence it had. That is rejected. The prior is brand-shaped: Toyota spans 85–100 and Jeep 17.4–42.4 with no overlap, so shrinking toward it is averaging across a badge, and the whole point of this change is that a Tundra and a RAV4 are different vehicles. Per-model evidence wins wherever it exists; the prior is the fallback for where it does not, not a gravitational pull on where it does.
 
 The threshold is a coverage rule, not a confidence blend. Below 40 complaints a share is too unstable to describe a vehicle — at 40 complaints and a share near 0.6 the 95% interval spans roughly 20 points on the 0–100 scale — so those rows are better served by an honest prior than by noise dressed as measurement. That is exactly the "no other datasource" case, and it is labelled on the page rather than hidden.
 
-**Neutral is `complaint_min_n` set impossibly high** (any value above the largest `n`, 2,116), which sends every vehicle to the fallback and reproduces today's behavior. A test pins that. Note this differs from both existing knobs: `repair_cost_spread_ratio` turns off at 1, this turns off at a large number. The README states all three off-switches together, because two adjacent parameters with different neutral values is a trap.
+**Neutral is `complaint_min_n` set impossibly high** (the README documents `10000`, comfortably above the largest `n`, the Silverado 1500's 2,192), which sends every vehicle to the fallback and reproduces today's behavior. A test pins that. Note this differs from both existing knobs: `repair_cost_spread_ratio` turns off at 1, this turns off at a large number. The README states all three off-switches together, because two adjacent parameters with different neutral values is a trap.
 
 `effective` replaces `reliability` **only** in `repairMultiplier`. The `reliability` axis score, its slider, and the value calculation are untouched: severity share measures what breaks expensively, the slider measures time in the shop, and merging them would rebuild the double-count deliberately split when the multiplier shipped. It would also invalidate every six-weight preset and shared link.
 
@@ -75,14 +75,14 @@ Three columns join `data/vehicles.csv` beside `reliability`, giving it the prove
 
 ### Coverage is two-tier, and the page says so
 
-Twenty of the 79 fall back to the prior: thirteen have no complaint data at all, and seven more sit below the forty-complaint threshold.
+Nineteen of the 79 fall back to the prior: twelve have no complaint data at all, and seven more sit below the forty-complaint threshold.
 
 This is the failure mode the README already names for prices: "A partially corrected dataset is more misleading than a uniformly wrong one." The mitigation is the one the repo already uses — the `listed` / `scaled` / `estimate` badges. The detail panel gains a badge on the reliability figure:
 
 | Badge | Condition | Today |
 | ----- | --------- | ----- |
-| `measured` | `n >= complaint_min_n`; the figure is this model's own complaint record | 59 |
-| `judgment` | below the threshold or no complaint data; the brand-shaped prior stands in | 20 |
+| `measured` | `n >= complaint_min_n`; the figure is this model's own complaint record | 60 |
+| `judgment` | below the threshold or no complaint data; the brand-shaped prior stands in | 19 |
 
 Two badges, not three, because there is no longer a blended middle state — a row is either described by its own evidence or it is not.
 
@@ -109,3 +109,4 @@ Two badges, not three, because there is no longer a blended middle state — a r
 
 - [NHTSA complaints API](https://www.nhtsa.gov/nhtsa-datasets-and-apis) — free, no API key, US government work in the public domain
 - Correlations and coverage figures computed from a full pull of all 79 nameplates on 2026-08-12; the numbers in this spec are measured, not estimated
+- Coverage counts and shares above were re-read from the shipped `data/complaints.json` on 2026-08-15 and differ slightly from the 2026-08-12 analysis pull, as a refetch of a live API will. The raw correlation reproduces at -0.61 on the shipped data; the category-removed figure was not recomputed

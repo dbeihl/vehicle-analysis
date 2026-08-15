@@ -170,10 +170,15 @@
     </div>
     <p class="fine">
       Each slider carries a provenance tag, because the six axes are not equally trustworthy.
-      <strong>Cost</strong> is computed from the workbook, with one judgment in it: the
-      repair reserve is scaled by each vehicle's reliability score, so the least reliable
-      row carries about 2.2x the reserve of the most reliable. Reliability therefore
-      reaches the chart twice — as dollars here, and as time in the shop on its own axis.
+      <strong>Cost</strong> is computed from the workbook, and the judgment inside it now rests
+      on evidence for most rows: the repair reserve is scaled by a figure read off each
+      vehicle's own NHTSA complaint record — the fraction of its complaints naming an
+      expensive subsystem — on 60 of the 79 rows. The other 19 have too few complaints of their
+      own to describe them, so they fall back to the hand-typed brand judgment, and the detail
+      panel says which one a row is using. The worst row carries about 2.5x the reserve of the
+      best. The Reliability slider is untouched by all this: still a judgment, still measuring
+      time in the shop rather than dollars. On those 19 fallback rows, and only there, the same
+      guess reaches the chart twice.
       <strong>Efficiency</strong> is EPA and observed MPG.
       <strong>Comfort</strong> is the strongest of the subjective three — it starts from actual decibel-meter
       readings at 55 mph (median across measured trims), then subtracts points for documented seat complaints
@@ -183,11 +188,12 @@
       quality from drivetrain architecture, reliability from Consumer Reports brand record minus documented
       mid-life failure patterns. Neither is measured data.
       <br><br>
-      If you want to replace the two SWAGs with real open data: NHTSA publishes complaints, recalls, and TSBs
-      as free keyless APIs and daily bulk files (public domain), and the UK DVSA publishes every MOT test result
-      — including mileage at failure and coded failure reasons — under the Open Government Licence. That's the
-      only free dataset anywhere that measures failures at the mileages you actually care about. Its limit is
-      that US-only trucks barely exist in the UK fleet. No open dataset exists for comfort at all.
+      Half of that swap has shipped. NHTSA's complaint API is free, keyless, and public domain, and it is where
+      the repair-reserve figure above comes from. What it does not fix is the Reliability and Quality axes
+      themselves, which are still guesses. The remaining open dataset worth having is the UK DVSA's MOT results
+      — every test, including mileage at failure and coded failure reasons, under the Open Government Licence.
+      It's the only free dataset anywhere that measures failures at the mileages you actually care about. Its
+      limit is that US-only trucks barely exist in the UK fleet. No open dataset exists for comfort at all.
       <br><br>
       The cost numbers behind every point come from an eleven-tab workbook:
       <a href="vehicle-turnover-planner.xlsx" download>download vehicle-turnover-planner.xlsx</a>
@@ -236,9 +242,12 @@ var VA = (function () {
 
   /* Fixed anchors, deliberately not the fleet's own min and max: a
      fleet-relative rescale would move every vehicle's cost whenever a row is
-     added. The observed range is 0.219 (Toyota Venza) to 0.944 (Cadillac
-     Escalade ESV), so these bracket it with a little headroom and a future
-     outlier clamps instead of rescaling its peers. */
+     added. Shares in the data run 0.2228 (Toyota Venza) to 0.9615 (Ford
+     F-150), so the anchors do NOT bracket the range: the F-150 sits above
+     ANCHOR_HIGH and scores 0 by clamping, which is the intended behavior --
+     an outlier clamps rather than rescaling its peers. No row clamps today:
+     the highest share among rows clearing complaint_min_n is 0.9144
+     (Escalade ESV), and the F-150's 26 complaints keep it on the prior. */
   var COMPLAINT_ANCHOR_LOW = 0.20, COMPLAINT_ANCHOR_HIGH = 0.95;
 
   function complaintScore(share) {
@@ -388,7 +397,7 @@ var FILTERS=[
  {k:"three",l:"Three-row"},{k:"t1",l:"Tier 1 only"},{k:"not3",l:"Exclude Tier 3"}
 ];
 var AXES=[
- ["Cost","computed + judgment","Cost per mile; repair reserve scaled by the reliability guess"],
+ ["Cost","computed + complaints","Cost per mile; repair reserve scaled by NHTSA complaints, prior on 19 rows"],
  ["Quality","judgment","Drivetrain architecture and known failure risk"],
  ["Longevity","iSeeCars","Odds of still running past 250k"],
  ["Efficiency","EPA/observed","Real highway MPG"],
@@ -914,7 +923,7 @@ function buildExport(st){
   lines.push("");
   lines.push(csvRow(["rank","name","trim","tier","category","cost_per_mile","cost_per_year",
     "buy_price","price_basis","mpg","fuel","on_frontier","total","value","cost_score",
-    "quality","longevity","reliability","reliability_basis","comfort","efficiency","db_55mph","db_basis",
+    "quality","longevity","reliability","repair_basis","comfort","efficiency","db_55mph","db_basis",
     "transmission","engine","over_6000lb_gvwr","risk","longevity_source"]));
   /* Every ranked row, not the 24 drawRanked shows -- "look at the data
      yourself" is the whole point of the file.
@@ -924,7 +933,12 @@ function buildExport(st){
      m.relBasis: buildExport must produce a correct column for any row array
      it is handed, not only one that happened to pass through compute()
      first, and asking the engine directly keeps the label from drifting out
-     of sync with the number it describes. */
+     of sync with the number it describes.
+
+     It is repair_basis, not reliability_basis: it labels the figure the
+     repair reserve used, and the `reliability` column beside it always
+     carries the hand-typed prior. Naming it after that neighbour would put
+     `measured` next to a number that is nothing of the kind. */
   st.ranked.forEach(function(m,i){
     var relBasis=VA.repairBasis(m,INPUTS);
     lines.push(csvRow([i+1,m.name,m.trimName,m.tier,m.cat,m.cpm.toFixed(4),Math.round(m.peryr),

@@ -59,6 +59,22 @@ def severity_share(complaints):
     return sum(1 for c in complaints if is_expensive(c.get('components'))) / len(complaints)
 
 
+def columns_for(entry):
+    """The three CSV cells for one nameplate, or three blanks when it has none.
+
+    A nameplate NHTSA answers for with zero complaints has years but no
+    share, and formatting None raised TypeError here -- after the fetch had
+    already written complaints.json, so the run looked half-done. A missing
+    share is no evidence, exactly like no data at all, and build.py rejects a
+    row carrying two of the three columns anyway.
+    """
+    if not entry or entry.get('severity_share') is None:
+        return '', '', ''
+    return (f"{entry['severity_share']:.4f}",
+            str(entry['n']),
+            '|'.join(str(y) for y in entry['years']))
+
+
 def fetch(make, model, year, attempts=4):
     """Return (results, status): 'ok', 'no_data' on a 400, or 'failed'.
 
@@ -86,29 +102,42 @@ def fetch(make, model, year, attempts=4):
 
 
 def one(name):
+    """Return (name, entry, failed_years).
+
+    'no_data' and 'failed' both skip the year, but they are not the same
+    fact: a 400 means NHTSA has nothing for that model year, a failure means
+    we could not ask. Counting failures separately is what keeps a degraded
+    run from reading like a vehicle with little history.
+    """
     make, model = fetch_recalls.split_name(name)
     if not make:
-        return name, None
-    got, years = [], []
+        return name, None, 0
+    got, years, failed = [], [], 0
     for y in YEARS:
         res, status = fetch(make, model, y)
         if status == 'ok':
             got.extend(res)
             years.append(y)
+        elif status == 'failed':
+            failed += 1
     if not years:
-        return name, None
-    return name, {'severity_share': severity_share(got), 'n': len(got), 'years': years}
+        return name, None, failed
+    return name, {'severity_share': severity_share(got), 'n': len(got),
+                  'years': years}, failed
 
 
 def main():
     rows = list(csv.DictReader(open(ROOT / 'data' / 'vehicles.csv')))
     names = sorted({r['name'] for r in rows})
-    out = {}
+    out, failures = {}, {}
     with ThreadPoolExecutor(max_workers=6) as pool:
-        for name, entry in pool.map(one, names):
+        for name, entry, failed in pool.map(one, names):
             if entry:
                 out[name] = entry
-            print(f'{name}: {entry["n"] if entry else "no data"}', flush=True)
+            if failed:
+                failures[name] = failed
+            note = f' -- {failed} of {len(YEARS)} model years FAILED' if failed else ''
+            print(f'{name}: {entry["n"] if entry else "no data"}{note}', flush=True)
     (ROOT / 'data' / 'complaints.json').write_text(
         json.dumps(out, indent=1, sort_keys=True) + '\n')
 
@@ -124,16 +153,22 @@ def main():
         if col not in fieldnames:
             fieldnames.append(col)
     for r in rows:
-        entry = out.get(r['name'])
-        r['complaint_severity_share'] = f"{entry['severity_share']:.4f}" if entry else ''
-        r['complaint_n'] = str(entry['n']) if entry else ''
-        r['complaint_years'] = '|'.join(str(y) for y in entry['years']) if entry else ''
+        (r['complaint_severity_share'], r['complaint_n'],
+         r['complaint_years']) = columns_for(out.get(r['name']))
     with open(path, 'w', newline='') as fh:
         writer = csv.DictWriter(fh, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
     print(f'wrote data/complaints.json and updated {len(rows)} rows '
           f'in data/vehicles.csv ({len(out)} with evidence)')
+    # A partial fetch and a vehicle with little history look identical in the
+    # output file, so the difference has to be said out loud here.
+    if failures:
+        print(f'WARNING: {sum(failures.values())} model-year queries failed across '
+              f'{len(failures)} nameplates, which now understate their complaint '
+              f'history. Re-run before trusting them: ' + ', '.join(sorted(failures)))
+    else:
+        print('every model-year query answered: no silent gaps')
 
 
 if __name__ == '__main__':

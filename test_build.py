@@ -594,6 +594,20 @@ def check_complaint_classification():
     many = [{'components': 'ENGINE'}] * 50 + [{'components': 'SEATS'}] * 50
     assert fc.severity_share(few) == fc.severity_share(many) == 0.5, \
         'severity share must be volume-independent'
+
+    # Zero complaints is not a share of zero, and the column writer has to
+    # survive that: formatting None crashed main() AFTER the multi-minute
+    # fetch had already written complaints.json, so the run looked half-done
+    # and the fix was invisible until the next full refetch.
+    assert fc.severity_share([]) is None, \
+        'a nameplate with no complaints has no share, not a share of zero'
+    assert fc.columns_for({'severity_share': None, 'n': 0, 'years': [2019]}) \
+        == ('', '', ''), 'a missing share must write three empty columns, not raise'
+    assert fc.columns_for(None) == ('', '', ''), \
+        'a nameplate with no entry at all must write three empty columns'
+    assert fc.columns_for({'severity_share': 0.6, 'n': 120, 'years': [2019, 2023]}) \
+        == ('0.6000', '120', '2019|2023'), \
+        'a complete entry must still write all three columns'
     print('  ok: complaint severity classification')
 
 
