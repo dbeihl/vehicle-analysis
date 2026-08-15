@@ -579,6 +579,15 @@ def check_complaint_classification():
     for field in ('SEATS', 'STRUCTURE', 'UNKNOWN OR OTHER', '', 'EXTERIOR LIGHTING'):
         assert not fc.is_expensive(field), f'{field!r} should not count as expensive'
 
+    # A component that merely CONTAINS an expensive subsystem's name is not
+    # that subsystem. This is the case that separates split-then-prefix from
+    # substring matching -- every other fixture in this test passes under
+    # both, so without it the function's actual logic is untested.
+    assert not fc.is_expensive('CHECK ENGINE INDICATOR LAMP'), \
+        'a component merely containing "ENGINE" is not an engine complaint'
+    assert not fc.is_expensive('BACKUP CAMERA, EXTERIOR LIGHTING'), \
+        'no part of this list starts with an expensive subsystem'
+
     # A share is a ratio, so it must not move with the number of complaints.
     few = [{'components': 'ENGINE'}, {'components': 'SEATS'}]
     many = [{'components': 'ENGINE'}] * 50 + [{'components': 'SEATS'}] * 50

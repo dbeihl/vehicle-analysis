@@ -10,9 +10,7 @@ highest counts belong to the RAV4 and CR-V, the best-selling crossovers in the
 country. The fraction of a vehicle's own complaints that name an expensive
 subsystem has the fleet size cancel out of it exactly.
 
-Run: python3 fetch_complaints.py   (several minutes; rewrites data/complaints.json
-                                    and the three complaint columns in
-                                    data/vehicles.csv)
+Run: python3 fetch_complaints.py   (several minutes; rewrites data/complaints.json)
 """
 import csv
 import json
