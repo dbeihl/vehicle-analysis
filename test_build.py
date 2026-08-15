@@ -48,6 +48,8 @@ def main():
 
     check_input_ranges()
     check_collapse_order()
+    check_complaint_classification()
+    check_complaint_columns()
     check_export()
     check_price_resolution()
     check_emitted_schema(real)
@@ -560,6 +562,76 @@ def check_readme_counts(rows):
     pattern = (r'\*\*(?<!\d)' + str(observed) + r'(?!\d) of the (?<!\d)'
                + str(len(rows)) + r'(?!\d) rows carry an observed price today\.\*\*')
     assert re.search(pattern, readme), f'README is stale: expected "{claim}"'
+
+
+def check_complaint_classification():
+    """is_expensive() must key off the subsystem, not the whole string.
+
+    NHTSA returns a comma-separated component list, so a complaint naming
+    both a cosmetic and an expensive subsystem is expensive. Matching the
+    raw string with `in` would also catch 'ENGINE' inside 'ENGINE AND
+    ENGINE COOLING' by accident and miss 'POWER TRAIN' entirely when it
+    arrives second in the list.
+    """
+    import fetch_complaints as fc
+    for field in ('ENGINE', 'POWER TRAIN', 'SEATS, ENGINE',
+                  'ENGINE AND ENGINE COOLING', 'SERVICE BRAKES, HYDRAULIC'):
+        assert fc.is_expensive(field), f'{field!r} should count as expensive'
+    for field in ('SEATS', 'STRUCTURE', 'UNKNOWN OR OTHER', '', 'EXTERIOR LIGHTING'):
+        assert not fc.is_expensive(field), f'{field!r} should not count as expensive'
+
+    # A component that merely CONTAINS an expensive subsystem's name is not
+    # that subsystem. This is the case that separates split-then-prefix from
+    # substring matching -- every other fixture in this test passes under
+    # both, so without it the function's actual logic is untested.
+    assert not fc.is_expensive('CHECK ENGINE INDICATOR LAMP'), \
+        'a component merely containing "ENGINE" is not an engine complaint'
+    assert not fc.is_expensive('BACKUP CAMERA, EXTERIOR LIGHTING'), \
+        'no part of this list starts with an expensive subsystem'
+
+    # A share is a ratio, so it must not move with the number of complaints.
+    few = [{'components': 'ENGINE'}, {'components': 'SEATS'}]
+    many = [{'components': 'ENGINE'}] * 50 + [{'components': 'SEATS'}] * 50
+    assert fc.severity_share(few) == fc.severity_share(many) == 0.5, \
+        'severity share must be volume-independent'
+
+    # Zero complaints is not a share of zero, and the column writer has to
+    # survive that: formatting None crashed main() AFTER the multi-minute
+    # fetch had already written complaints.json, so the run looked half-done
+    # and the fix was invisible until the next full refetch.
+    assert fc.severity_share([]) is None, \
+        'a nameplate with no complaints has no share, not a share of zero'
+    assert fc.columns_for({'severity_share': None, 'n': 0, 'years': [2019]}) \
+        == ('', '', ''), 'a missing share must write three empty columns, not raise'
+    assert fc.columns_for(None) == ('', '', ''), \
+        'a nameplate with no entry at all must write three empty columns'
+    assert fc.columns_for({'severity_share': 0.6, 'n': 120, 'years': [2019, 2023]}) \
+        == ('0.6000', '120', '2019|2023'), \
+        'a complete entry must still write all three columns'
+    print('  ok: complaint severity classification')
+
+
+def check_complaint_columns():
+    """A partial complaint record must be rejected, not half-used.
+
+    Same rule the price columns already follow: metadata claiming provenance
+    the figure does not have reads exactly like a verified figure once it
+    reaches the page.
+    """
+    base = dict(price='20000', category='Test cat', name='T', trim='unspecified')
+    full = dict(base, complaint_severity_share='0.6', complaint_n='120',
+                complaint_years='2019|2021|2023')
+    assert not build.price_problems([full]), \
+        'a complete complaint record must pass'
+    for missing in ('complaint_severity_share', 'complaint_n', 'complaint_years'):
+        partial = dict(full)
+        partial[missing] = ''
+        assert build.price_problems([partial]), \
+            f'a complaint record missing {missing} must be rejected'
+    # A share is a fraction. 60 is a percentage someone forgot to divide.
+    assert build.price_problems([dict(full, complaint_severity_share='60')]), \
+        'a severity share outside 0-1 must be rejected'
+    print('  ok: complaint column provenance')
 
 
 if __name__ == '__main__':

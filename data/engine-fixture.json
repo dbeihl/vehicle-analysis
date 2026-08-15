@@ -7,6 +7,7 @@
     "avg_outstanding_balance_factor": 0.55,
     "buy_odometer": 40000,
     "cash_opportunity_rate": 0.045,
+    "complaint_min_n": 40,
     "default_weights": {
       "comfort": 15,
       "cost": 25,
@@ -81,32 +82,32 @@
   "full": {
     "Cadillac Escalade ESV|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.7748871060785597,
+      "cpm": 0.8026063430564484,
       "price": 52000.0
     },
     "Cadillac Escalade|unspecified": {
       "basis": "observed",
-      "cpm": 0.8984821274481292,
+      "cpm": 0.9220387280336145,
       "price": 70777.0
     },
     "Chevrolet Colorado|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5143693519777163,
+      "cpm": 0.5332011507476576,
       "price": 29000.0
     },
     "Chevrolet Equinox|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4352178812384932,
+      "cpm": 0.44445505999933954,
       "price": 19000.0
     },
     "Chevrolet Silverado 1500|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5943883402334641,
+      "cpm": 0.617120209642725,
       "price": 33000.0
     },
     "Chevrolet Suburban|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.6890102451210725,
+      "cpm": 0.7013045684545665,
       "price": 45000.0
     },
     "Chevrolet Tahoe 3.0L Duramax|unspecified": {
@@ -116,22 +117,22 @@
     },
     "Chevrolet Tahoe|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.6769059973170684,
+      "cpm": 0.6893659521788941,
       "price": 46000.0
     },
     "Chevrolet Traverse|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5350551943616202,
+      "cpm": 0.550170932092792,
       "price": 31000.0
     },
     "Dodge Durango|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.57662619055286,
+      "cpm": 0.5560896701993934,
       "price": 33000.0
     },
     "Ford Edge|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4792982420756733,
+      "cpm": 0.5034508315489783,
       "price": 25000.0
     },
     "Ford Escape Hybrid|unspecified": {
@@ -141,12 +142,12 @@
     },
     "Ford Expedition|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.6822961548466622,
+      "cpm": 0.6937012093677962,
       "price": 43000.0
     },
     "Ford Explorer|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5366777577217591,
+      "cpm": 0.5283432779674688,
       "price": 32000.0
     },
     "Ford F-150 Hybrid (PowerBoost)|unspecified": {
@@ -166,7 +167,7 @@
     },
     "Ford Maverick (2.0T)|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4671675182785565,
+      "cpm": 0.4944939408685298,
       "price": 25000.0
     },
     "Ford Maverick Hybrid|unspecified": {
@@ -176,67 +177,67 @@
     },
     "Ford Ranger|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5287887407588306,
+      "cpm": 0.5429727438912149,
       "price": 32000.0
     },
     "GMC Acadia|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5394027369298758,
+      "cpm": 0.5422520520563789,
       "price": 30000.0
     },
     "GMC Canyon|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5267785420190092,
+      "cpm": 0.5308934255536233,
       "price": 30000.0
     },
     "GMC Sierra 1500|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.6173832100068235,
+      "cpm": 0.6278989329375894,
       "price": 35000.0
     },
     "GMC Yukon XL|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.7216762339699377,
+      "cpm": 0.7345961117848825,
       "price": 50000.0
     },
     "GMC Yukon|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.7151661604403594,
+      "cpm": 0.7287465525503638,
       "price": 49000.0
     },
     "Honda CR-V Hybrid|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4594831101118244,
+      "cpm": 0.4841707435657978,
       "price": 30000.0
     },
     "Honda CR-V|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.45642235227357447,
+      "cpm": 0.47626260754989813,
       "price": 26000.0
     },
     "Honda HR-V|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4079449295205106,
+      "cpm": 0.4082177689351038,
       "price": 20000.0
     },
     "Honda Passport|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5537463312965166,
+      "cpm": 0.5741014332829956,
       "price": 33000.0
     },
     "Honda Pilot|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5177105454699592,
+      "cpm": 0.5373257695741626,
       "price": 30000.0
     },
     "Honda Ridgeline|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5016071853103442,
+      "cpm": 0.517908488184218,
       "price": 28500.0
     },
     "Hyundai Palisade|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5407206426770639,
+      "cpm": 0.5393491024932512,
       "price": 33000.0
     },
     "Hyundai Santa Fe Hybrid|unspecified": {
@@ -246,42 +247,42 @@
     },
     "Hyundai Santa Fe|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.47834483503157704,
+      "cpm": 0.48607007418415493,
       "price": 25000.0
     },
     "Hyundai Tucson|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4494800631667062,
+      "cpm": 0.47567536298574586,
       "price": 22000.0
     },
     "Jeep Cherokee|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.49085991598647344,
+      "cpm": 0.49436700136048367,
       "price": 21000.0
     },
     "Jeep Compass|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.46714334181006323,
+      "cpm": 0.46332275410506146,
       "price": 19000.0
     },
     "Jeep Gladiator|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5788128563467984,
+      "cpm": 0.5950731098196909,
       "price": 34000.0
     },
     "Jeep Grand Cherokee L|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.6096678111443383,
+      "cpm": 0.609404215928946,
       "price": 38000.0
     },
     "Jeep Grand Cherokee|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5666436924798419,
+      "cpm": 0.5676190817277436,
       "price": 32000.0
     },
     "Jeep Grand Wagoneer|unspecified": {
       "basis": "observed",
-      "cpm": 0.7848524333563455,
+      "cpm": 0.7819956750331114,
       "price": 53350.0
     },
     "Jeep Wrangler 4xe|unspecified": {
@@ -291,7 +292,7 @@
     },
     "Jeep Wrangler|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5916663612519393,
+      "cpm": 0.6133864447915092,
       "price": 32000.0
     },
     "Kia Sorento Hybrid|unspecified": {
@@ -301,17 +302,17 @@
     },
     "Kia Sorento|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.477641922703744,
+      "cpm": 0.49038285624071715,
       "price": 25000.0
     },
     "Kia Sportage|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.44217812300992737,
+      "cpm": 0.4540059136633048,
       "price": 21000.0
     },
     "Kia Telluride|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5466303780467651,
+      "cpm": 0.5457209521399792,
       "price": 34000.0
     },
     "Lexus LX 700h|unspecified": {
@@ -326,7 +327,7 @@
     },
     "Lexus RX 350|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.585625866498562,
+      "cpm": 0.5854000535457273,
       "price": 46000.0
     },
     "Lexus RX Hybrid|unspecified": {
@@ -336,12 +337,12 @@
     },
     "Lincoln Navigator|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.7449030985479426,
+      "cpm": 0.7368613367553849,
       "price": 50000.0
     },
     "Mazda CX-5|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.46496123571516684,
+      "cpm": 0.48145763861326796,
       "price": 25000.0
     },
     "Mazda CX-90|unspecified": {
@@ -351,12 +352,12 @@
     },
     "Mazda CX-9|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5056406721431809,
+      "cpm": 0.5209613767284736,
       "price": 28000.0
     },
     "Nissan Armada|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.6084631349700489,
+      "cpm": 0.6372228844589337,
       "price": 32000.0
     },
     "Nissan Frontier (2022+)|unspecified": {
@@ -366,47 +367,47 @@
     },
     "Nissan Pathfinder (2022+)|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5143059867467543,
+      "cpm": 0.5296363312019707,
       "price": 29000.0
     },
     "Nissan Rogue|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.45608015758466874,
+      "cpm": 0.4629147560407738,
       "price": 23000.0
     },
     "Nissan Titan|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5621643677426154,
+      "cpm": 0.5877809538825023,
       "price": 30000.0
     },
     "Ram 1500|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.6272794598848396,
+      "cpm": 0.6222934009025406,
       "price": 37000.0
     },
     "Ram 2500 (Cummins)|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.8142154292240832,
+      "cpm": 0.809821541619981,
       "price": 52000.0
     },
     "Subaru Ascent|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5080772967536955,
+      "cpm": 0.5300381695157526,
       "price": 28000.0
     },
     "Subaru Forester|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4391154703940183,
+      "cpm": 0.4432935378582553,
       "price": 25000.0
     },
     "Subaru Outback|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.46332300664177106,
+      "cpm": 0.47267945830896413,
       "price": 26000.0
     },
     "Toyota 4Runner|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5839426353192287,
+      "cpm": 0.602947392159811,
       "price": 38000.0
     },
     "Toyota Crown Signia|unspecified": {
@@ -421,7 +422,7 @@
     },
     "Toyota Highlander (gas)|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5267582002316289,
+      "cpm": 0.5501887485885453,
       "price": 37000.0
     },
     "Toyota Highlander Hybrid|unspecified": {
@@ -431,12 +432,12 @@
     },
     "Toyota RAV4 (gas)|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4566646168907726,
+      "cpm": 0.46911890196654243,
       "price": 27000.0
     },
     "Toyota RAV4 Hybrid|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.4494944847019159,
+      "cpm": 0.4570347186105162,
       "price": 30000.0
     },
     "Toyota Sequoia (pre-2023 5.7 V8)|unspecified": {
@@ -446,12 +447,12 @@
     },
     "Toyota Sienna Hybrid|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5039122335165283,
+      "cpm": 0.515864550171984,
       "price": 38000.0
     },
     "Toyota Tacoma (pre-2024 V6)|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5432805583294833,
+      "cpm": 0.5711159340092496,
       "price": 34000.0
     },
     "Toyota Tacoma Hybrid (i-Force Max)|unspecified": {
@@ -461,17 +462,17 @@
     },
     "Toyota Tundra (2007-2021 5.7 V8)|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.6278126347386238,
+      "cpm": 0.6582400416089101,
       "price": 42000.0
     },
     "Toyota Venza|unspecified": {
       "basis": "observed",
-      "cpm": 0.4676511138575728,
+      "cpm": 0.46868234777655515,
       "price": 33223.0
     },
     "Volkswagen Atlas|unspecified": {
       "basis": "placeholder",
-      "cpm": 0.5354566050101703,
+      "cpm": 0.5317475760151944,
       "price": 30000.0
     }
   },

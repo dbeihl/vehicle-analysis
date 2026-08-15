@@ -5,6 +5,10 @@
    index.html rather than reimplementing them, same as test_collapse.mjs --
    reimplementing would only test the copy. */
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const VA = require('./engine.js');
 
 const html = readFileSync('./index.html', 'utf8');
 
@@ -19,7 +23,7 @@ const rowSrc = extract(/function csvRow\(cells\)\{[^\n]*\}/, 'csvRow');
 const buildSrc = extract(/function buildExport\(st\)\{[\s\S]*?\n\}/, 'buildExport');
 
 const buildExport = new Function(
-  'INPUTS', 'DEFAULTS', 'FIELDS', 'AXES', 'W', 'PRESET', 'FILT', 'SEL', 'location', 'st',
+  'INPUTS', 'DEFAULTS', 'FIELDS', 'AXES', 'W', 'PRESET', 'FILT', 'SEL', 'location', 'VA', 'st',
   `${escSrc}\n${rowSrc}\n${buildSrc}\nreturn buildExport(st);`);
 const csvEscape = new Function(`${escSrc}\nreturn csvEscape;`)();
 
@@ -40,6 +44,7 @@ const INPUTS = {
   financing_mode: 'cash', cash_opportunity_rate: 0.045, loan_apr: 0.065,
   down_payment_pct: 0.2, avg_outstanding_balance_factor: 0.55,
   sales_tax_rate: 0.07, industry_avg_5yr_deprec: 0.418, repair_cost_spread_ratio: 2.66,
+  complaint_min_n: 40,
 };
 const DEFAULTS = { ...INPUTS, annual_miles: 55000 };  // annual_miles is edited
 const FIELDS = [{ k: 'annual_miles', l: 'Annual miles' }, { k: 'gas_per_gal', l: 'Gas $/gal' }];
@@ -54,6 +59,7 @@ function fakeRow(i) {
     quality: 80, longevity: 70, reliability: 60, comfort: 50, efficiency: 40,
     db55: 66.5, dbMeasured: true, transName: '10-speed auto', engineName: 'V8',
     heavy: true, risk: 'Fine', longSource: 'iSeeCars',
+    complaintSeverity: 0.6, complaintN: 120,
   };
 }
 
@@ -64,9 +70,13 @@ const ranked = Array.from({ length: ROWS }, (_, i) => fakeRow(i));
    all three terminators is asserted directly above. */
 ranked[5].risk = 'Runs hot, and the "known" fix is a recall,\rper NHTSA';
 ranked[5].name = 'Comma, Motors';
+/* Below complaint_min_n (40): too few complaints of its own to describe it,
+   so this row must fall back to the brand-level judgment. */
+ranked[10].complaintSeverity = 0.5;
+ranked[10].complaintN = 10;
 
 const csv = buildExport(INPUTS, DEFAULTS, FIELDS, AXES, W, 'Custom', 'heavy',
-  'Vehicle 0', { href: 'https://example.test/#annual_miles=60000' }, { ranked });
+  'Vehicle 0', { href: 'https://example.test/#annual_miles=60000' }, VA, { ranked });
 const lines = csv.split('\n');
 
 const headerIdx = lines.findIndex(l => l.startsWith('rank,name,'));
@@ -83,7 +93,7 @@ if (body.length !== ROWS) {
    or the export cannot reproduce the numbers printed beside it. */
 for (const label of ['Repair reserve $/mi, over 150k', 'Sales tax rate', 'Loan APR',
   'Industry average 5-year depreciation', 'Cash opportunity rate',
-  'Repair cost spread, worst/best']) {
+  'Repair cost spread, worst/best', 'Complaint evidence threshold']) {
   if (!csv.includes(label)) throw new Error(`export is missing the ${label} assumption`);
 }
 if (!csv.includes('Annual miles (edited),60000')) {
@@ -118,10 +128,27 @@ body.forEach((line, i) => {
   if (n !== width) throw new Error(`row ${i + 1} has ${n} fields against ${width} columns`);
 });
 
+/* The basis has to travel with the number, and it has to be the RIGHT basis:
+   membership in the two valid strings alone would still pass an inverted
+   ternary. Row 0 is above complaint_min_n (120 >= 40) and must read
+   'measured'; row 10 is below it (10 < 40) and must read 'judgment'. */
+const basisIdx = fields(lines[headerIdx]).indexOf('repair_basis');
+if (basisIdx < 0) throw new Error('the export must carry repair_basis');
+if (fields(body[0])[basisIdx] !== 'measured') {
+  throw new Error(`row with 120 complaints against a threshold of 40 must be `
+    + `measured, got ${fields(body[0])[basisIdx]}`);
+}
+if (fields(body[10])[basisIdx] !== 'judgment') {
+  throw new Error(`row with 10 complaints against a threshold of 40 must be `
+    + `judgment, got ${fields(body[10])[basisIdx]}`);
+}
+
+const nameIdx = fields(lines[headerIdx]).indexOf('name');
+const riskIdx = fields(lines[headerIdx]).indexOf('risk');
 const nasty = fields(body[5]);
-if (nasty[1] !== 'Comma, Motors') throw new Error(`name lost its comma: ${nasty[1]}`);
-if (nasty[25] !== 'Runs hot, and the "known" fix is a recall,\rper NHTSA') {
-  throw new Error(`risk text did not survive escaping: ${nasty[25]}`);
+if (nasty[nameIdx] !== 'Comma, Motors') throw new Error(`name lost its comma: ${nasty[nameIdx]}`);
+if (nasty[riskIdx] !== 'Runs hot, and the "known" fix is a recall,\rper NHTSA') {
+  throw new Error(`risk text did not survive escaping: ${nasty[riskIdx]}`);
 }
 
 console.log(`ok: export carries ${body.length} vehicles across ${width} columns, `
