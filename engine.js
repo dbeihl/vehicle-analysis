@@ -47,17 +47,27 @@ var VA = (function () {
     return Math.max(0, Math.min(1, s)) * 100;
   }
 
+  function hasOwnEvidence(v, inp) {
+    /* Turns off by raising complaint_min_n above every count, not by zeroing
+       it -- the opposite of repair_cost_spread_ratio, whose neutral is 1. */
+    return v.complaintSeverity !== null && v.complaintSeverity !== undefined
+        && v.complaintN >= inp.complaint_min_n;
+  }
+
+  function repairBasis(v, inp) {
+    /* The label the page and the export both show. Derived from the same
+       predicate that chooses the figure, not a second copy of it -- two
+       comparisons that must agree will eventually not. */
+    return hasOwnEvidence(v, inp) ? 'measured' : 'judgment';
+  }
+
   function repairReliability(v, inp) {
     /* Per-model evidence wins wherever the model has enough of its own
        complaints to describe it. The prior is a fallback for the rows that
        have none, NOT a weight applied to the rows that do: it is
        brand-shaped, Toyota 85-100 against Jeep 17.4-42.4 with no overlap, so
-       pulling a measured figure toward it averages across a badge.
-
-       Turns off by raising complaint_min_n above every count, not by zeroing
-       it -- the opposite of repair_cost_spread_ratio, whose neutral is 1. */
-    if (v.complaintSeverity !== null && v.complaintSeverity !== undefined
-        && v.complaintN >= inp.complaint_min_n) {
+       pulling a measured figure toward it averages across a badge. */
+    if (hasOwnEvidence(v, inp)) {
       return complaintScore(v.complaintSeverity);
     }
     return v.reliability;
@@ -139,6 +149,8 @@ var VA = (function () {
     retentionIndex: retentionIndex,
     repairReserve: repairReserve,
     complaintScore: complaintScore,
+    hasOwnEvidence: hasOwnEvidence,
+    repairBasis: repairBasis,
     repairReliability: repairReliability,
     repairMultiplier: repairMultiplier,
     resaleMultiplier: resaleMultiplier,

@@ -247,17 +247,27 @@ var VA = (function () {
     return Math.max(0, Math.min(1, s)) * 100;
   }
 
+  function hasOwnEvidence(v, inp) {
+    /* Turns off by raising complaint_min_n above every count, not by zeroing
+       it -- the opposite of repair_cost_spread_ratio, whose neutral is 1. */
+    return v.complaintSeverity !== null && v.complaintSeverity !== undefined
+        && v.complaintN >= inp.complaint_min_n;
+  }
+
+  function repairBasis(v, inp) {
+    /* The label the page and the export both show. Derived from the same
+       predicate that chooses the figure, not a second copy of it -- two
+       comparisons that must agree will eventually not. */
+    return hasOwnEvidence(v, inp) ? 'measured' : 'judgment';
+  }
+
   function repairReliability(v, inp) {
     /* Per-model evidence wins wherever the model has enough of its own
        complaints to describe it. The prior is a fallback for the rows that
        have none, NOT a weight applied to the rows that do: it is
        brand-shaped, Toyota 85-100 against Jeep 17.4-42.4 with no overlap, so
-       pulling a measured figure toward it averages across a badge.
-
-       Turns off by raising complaint_min_n above every count, not by zeroing
-       it -- the opposite of repair_cost_spread_ratio, whose neutral is 1. */
-    if (v.complaintSeverity !== null && v.complaintSeverity !== undefined
-        && v.complaintN >= inp.complaint_min_n) {
+       pulling a measured figure toward it averages across a badge. */
+    if (hasOwnEvidence(v, inp)) {
       return complaintScore(v.complaintSeverity);
     }
     return v.reliability;
@@ -339,6 +349,8 @@ var VA = (function () {
     retentionIndex: retentionIndex,
     repairReserve: repairReserve,
     complaintScore: complaintScore,
+    hasOwnEvidence: hasOwnEvidence,
+    repairBasis: repairBasis,
     repairReliability: repairReliability,
     repairMultiplier: repairMultiplier,
     resaleMultiplier: resaleMultiplier,
@@ -580,8 +592,7 @@ function compute(){
     var bp=VA.buyPrice(m,INPUTS);
     m.priceBasis=bp.basis;
     m.price=bp.price;
-    m.relBasis=(m.complaintSeverity!==null && m.complaintSeverity!==undefined
-                && m.complaintN>=INPUTS.complaint_min_n)?'measured':'judgment';
+    m.relBasis=VA.repairBasis(m,INPUTS);
   });
   var bad=MODELS.filter(function(m){return !isFinite(m.cpm)});
   if(bad.length){
@@ -908,13 +919,14 @@ function buildExport(st){
   /* Every ranked row, not the 24 drawRanked shows -- "look at the data
      yourself" is the whole point of the file.
 
-     The basis is derived here from the raw complaint fields rather than read
-     off m.relBasis: buildExport must produce a correct column for any row
-     array it is handed, not only one that happened to pass through compute()
-     first. */
+     The basis is derived here via VA.repairBasis, the same predicate that
+     chooses which reliability figure feeds costPerMile, rather than read off
+     m.relBasis: buildExport must produce a correct column for any row array
+     it is handed, not only one that happened to pass through compute()
+     first, and asking the engine directly keeps the label from drifting out
+     of sync with the number it describes. */
   st.ranked.forEach(function(m,i){
-    var relBasis=(m.complaintSeverity!==null && m.complaintSeverity!==undefined
-                  && m.complaintN>=INPUTS.complaint_min_n)?"measured":"judgment";
+    var relBasis=VA.repairBasis(m,INPUTS);
     lines.push(csvRow([i+1,m.name,m.trimName,m.tier,m.cat,m.cpm.toFixed(4),Math.round(m.peryr),
       Math.round(m.price),m.priceBasis,m.mpg,m.fuel,m.onFront?"yes":"no",m.total,m.value,
       m.cost.toFixed(1),m.quality,m.longevity,m.reliability,relBasis,m.comfort,m.efficiency,

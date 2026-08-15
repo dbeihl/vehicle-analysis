@@ -5,6 +5,10 @@
    index.html rather than reimplementing them, same as test_collapse.mjs --
    reimplementing would only test the copy. */
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const VA = require('./engine.js');
 
 const html = readFileSync('./index.html', 'utf8');
 
@@ -19,7 +23,7 @@ const rowSrc = extract(/function csvRow\(cells\)\{[^\n]*\}/, 'csvRow');
 const buildSrc = extract(/function buildExport\(st\)\{[\s\S]*?\n\}/, 'buildExport');
 
 const buildExport = new Function(
-  'INPUTS', 'DEFAULTS', 'FIELDS', 'AXES', 'W', 'PRESET', 'FILT', 'SEL', 'location', 'st',
+  'INPUTS', 'DEFAULTS', 'FIELDS', 'AXES', 'W', 'PRESET', 'FILT', 'SEL', 'location', 'VA', 'st',
   `${escSrc}\n${rowSrc}\n${buildSrc}\nreturn buildExport(st);`);
 const csvEscape = new Function(`${escSrc}\nreturn csvEscape;`)();
 
@@ -66,9 +70,13 @@ const ranked = Array.from({ length: ROWS }, (_, i) => fakeRow(i));
    all three terminators is asserted directly above. */
 ranked[5].risk = 'Runs hot, and the "known" fix is a recall,\rper NHTSA';
 ranked[5].name = 'Comma, Motors';
+/* Below complaint_min_n (40): too few complaints of its own to describe it,
+   so this row must fall back to the brand-level judgment. */
+ranked[10].complaintSeverity = 0.5;
+ranked[10].complaintN = 10;
 
 const csv = buildExport(INPUTS, DEFAULTS, FIELDS, AXES, W, 'Custom', 'heavy',
-  'Vehicle 0', { href: 'https://example.test/#annual_miles=60000' }, { ranked });
+  'Vehicle 0', { href: 'https://example.test/#annual_miles=60000' }, VA, { ranked });
 const lines = csv.split('\n');
 
 const headerIdx = lines.findIndex(l => l.startsWith('rank,name,'));
@@ -120,20 +128,27 @@ body.forEach((line, i) => {
   if (n !== width) throw new Error(`row ${i + 1} has ${n} fields against ${width} columns`);
 });
 
-/* The basis has to travel with the number. A file that says a vehicle scores
-   62 without saying whether that came from its own complaint record or from a
-   brand prior invites the reader to treat both the same way. */
+/* The basis has to travel with the number, and it has to be the RIGHT basis:
+   membership in the two valid strings alone would still pass an inverted
+   ternary. Row 0 is above complaint_min_n (120 >= 40) and must read
+   'measured'; row 10 is below it (10 < 40) and must read 'judgment'. */
 const basisIdx = fields(lines[headerIdx]).indexOf('reliability_basis');
 if (basisIdx < 0) throw new Error('the export must carry reliability_basis');
-if (!['measured', 'judgment'].includes(fields(body[0])[basisIdx])) {
-  throw new Error(`reliability_basis must be measured or judgment, got `
-    + fields(body[0])[basisIdx]);
+if (fields(body[0])[basisIdx] !== 'measured') {
+  throw new Error(`row with 120 complaints against a threshold of 40 must be `
+    + `measured, got ${fields(body[0])[basisIdx]}`);
+}
+if (fields(body[10])[basisIdx] !== 'judgment') {
+  throw new Error(`row with 10 complaints against a threshold of 40 must be `
+    + `judgment, got ${fields(body[10])[basisIdx]}`);
 }
 
+const nameIdx = fields(lines[headerIdx]).indexOf('name');
+const riskIdx = fields(lines[headerIdx]).indexOf('risk');
 const nasty = fields(body[5]);
-if (nasty[1] !== 'Comma, Motors') throw new Error(`name lost its comma: ${nasty[1]}`);
-if (nasty[26] !== 'Runs hot, and the "known" fix is a recall,\rper NHTSA') {
-  throw new Error(`risk text did not survive escaping: ${nasty[26]}`);
+if (nasty[nameIdx] !== 'Comma, Motors') throw new Error(`name lost its comma: ${nasty[nameIdx]}`);
+if (nasty[riskIdx] !== 'Runs hot, and the "known" fix is a recall,\rper NHTSA') {
+  throw new Error(`risk text did not survive escaping: ${nasty[riskIdx]}`);
 }
 
 console.log(`ok: export carries ${body.length} vehicles across ${width} columns, `
