@@ -24,7 +24,7 @@ Measured across 66 of 79 nameplates, model years 2019/2021/2023 (the sampling `f
 | Raw | -0.61 |
 | With vehicle category removed | -0.54 |
 
-Both figures are computed over the 59 nameplates carrying at least 40 complaints, so a vehicle with four complaints does not get a vote in the correlation. That threshold exists only for measuring the relationship; the design below uses no threshold, because shrinkage already gives a four-complaint vehicle almost no weight.
+Both figures are computed over the 59 nameplates carrying at least 40 complaints, so a vehicle with four complaints does not get a vote in the correlation. The design below uses that same threshold as its coverage rule.
 
 The category effect is real but small: full-size body-on-frame SUVs average a 78% severe share against 55% for mid-size crossovers. Removing it costs only 0.07 of correlation, so severity share is not merely detecting trucks. A subjective score built from brand reputation is corroborated at -0.54 by data it was never derived from.
 
@@ -42,18 +42,20 @@ clamped to 0–100, with **`ANCHOR_LOW = 0.20`** and **`ANCHOR_HIGH = 0.95`**.
 
 The anchors are fixed, not the fleet's own min and max. A fleet-relative rescale would make every vehicle's cost move when a row is added — the same trap avoided by anchoring the spread multiplier at reliability 50 rather than the fleet median. The observed range is 0.219 (Toyota Venza) to 0.944 (Cadillac Escalade ESV), so these anchors bracket it with only slight headroom; a future vehicle outside them clamps rather than rescaling its peers.
 
-### The blend
+### Per-model evidence first, prior only as fallback
 
 ```
-weight(v)   = n(v) / (n(v) + k)
-effective(v) = weight(v) * empirical(v) + (1 - weight(v)) * reliability(v)
+effective(v) = empirical(v)      when n(v) >= COMPLAINT_MIN
+             = reliability(v)    otherwise
 ```
 
-`n` is the vehicle's total complaint count across the sampled years. **`k = 100`**, a new input `complaint_evidence_k`, meaning a vehicle needs 100 complaints before the evidence outvotes the prior.
+**`COMPLAINT_MIN = 40`**, a new input `complaint_min_n`. Fifty-nine of the 79 nameplates clear it; twenty fall back to the prior.
 
-Shrinkage rather than a fixed weight, because a fixed weight gives a vehicle with 4 complaints the same authority as one with 2,116. At `k = 100`: Ram 1500 (2,116) lands at 95% evidence, Nissan Titan (45) at 31%, and a vehicle with no data at 0% — it keeps the prior with no special case in the code.
+An earlier draft of this spec blended the two by shrinkage — `n / (n + k)` — so that a vehicle's estimate was pulled toward the brand prior in proportion to how little evidence it had. That is rejected. The prior is brand-shaped: Toyota spans 85–100 and Jeep 17.4–42.4 with no overlap, so shrinking toward it is averaging across a badge, and the whole point of this change is that a Tundra and a RAV4 are different vehicles. Per-model evidence wins wherever it exists; the prior is the fallback for where it does not, not a gravitational pull on where it does.
 
-**Neutral is `k = 0`**, which yields weight 0 for every vehicle and reproduces today's behavior exactly. Unlike the spread ratio, whose neutral is 1, this parameter turns off at zero. That difference is a trap and is called out in both the code comment and the README.
+The threshold is a coverage rule, not a confidence blend. Below 40 complaints a share is too unstable to describe a vehicle — at 40 complaints and a share near 0.6 the 95% interval spans roughly 20 points on the 0–100 scale — so those rows are better served by an honest prior than by noise dressed as measurement. That is exactly the "no other datasource" case, and it is labelled on the page rather than hidden.
+
+**Neutral is `complaint_min_n` set impossibly high** (any value above the largest `n`, 2,116), which sends every vehicle to the fallback and reproduces today's behavior. A test pins that. Note this differs from both existing knobs: `repair_cost_spread_ratio` turns off at 1, this turns off at a large number. The README states all three off-switches together, because two adjacent parameters with different neutral values is a trap.
 
 `effective` replaces `reliability` **only** in `repairMultiplier`. The `reliability` axis score, its slider, and the value calculation are untouched: severity share measures what breaks expensively, the slider measures time in the shop, and merging them would rebuild the double-count deliberately split when the multiplier shipped. It would also invalidate every six-weight preset and shared link.
 
@@ -77,11 +79,12 @@ Thirteen nameplates have no complaint data and another thirteen fall below `k`. 
 
 This is the failure mode the README already names for prices: "A partially corrected dataset is more misleading than a uniformly wrong one." The mitigation is the one the repo already uses — the `listed` / `scaled` / `estimate` badges. The detail panel gains a badge on the reliability figure:
 
-| Badge | Condition |
-| ----- | --------- |
-| `evidence` | weight >= 0.5 (53 vehicles today) |
-| `mixed` | 0 < weight < 0.5 (13 today) |
-| `judgment` | no complaint data (13 today) |
+| Badge | Condition | Today |
+| ----- | --------- | ----- |
+| `measured` | `n >= complaint_min_n`; the figure is this model's own complaint record | 59 |
+| `judgment` | below the threshold or no complaint data; the brand-shaped prior stands in | 20 |
+
+Two badges, not three, because there is no longer a blended middle state — a row is either described by its own evidence or it is not.
 
 **The residual risk, stated rather than solved.** The uncovered vehicles are not a random sample: they are hybrids and 2024+ models with little complaint history, which skew toward the reliable end. So vehicles keeping a generous prior are disproportionately ones already scored well, while older trucks are pulled toward mediocrity by evidence. Badging makes this visible; it does not remove it. Revisit once hybrid complaint histories mature.
 
@@ -99,7 +102,8 @@ This is the failure mode the README already names for prices: "A partially corre
 - A test that a vehicle with no complaint data lands at exactly its prior, and one with a large `n` lands within a point of its empirical score
 - A test that severity share of 0.20 and 0.95 map to 100 and 0, and that values outside the anchors clamp rather than exceeding the scale
 - `build.py` rejects a partial complaint record, proven by a rejecting case
-- A recorded before/after ranking diff in the PR, on the `full` variant at the shipped weights
+- A recorded before/after ranking diff in the PR, on the `full` variant at the shipped threshold
+- A test that a vehicle one complaint below the threshold takes the prior and one at the threshold takes its own evidence, so the boundary is exercised from both sides
 
 ## Sources
 
