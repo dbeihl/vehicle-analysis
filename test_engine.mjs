@@ -211,7 +211,7 @@ console.log(`ok: balanced-six = ${winner} at ${winnerScore.toFixed(1)}, frontier
    proof that the shipped ranking moved, which is what nothing was
    reporting before. */
 const LIVE_WINNER = 'Toyota Highlander Hybrid';
-const LIVE_SCORE = 89.2;
+const LIVE_SCORE = 89.5;
 const LIVE_FRONTIER = new Set([
   'Ford Escape Hybrid|unspecified', 'Ford Maverick Hybrid|unspecified',
   'Honda HR-V|unspecified', 'Toyota Highlander Hybrid|unspecified',
@@ -332,3 +332,46 @@ if (Math.abs((atTestRatio - atNeutral) - wiredExpected) > 1e-12) {
     + `computed but not wired into costPerMile's sum`);
 }
 console.log('ok: repairMultiplier is wired into costPerMile\'s sum, not just callable standalone');
+
+/* Per-model evidence where the model has enough of its own complaints to
+   describe it; the brand-shaped prior only where it does not. The prior spans
+   Toyota 85-100 against Jeep 17.4-42.4 with no overlap, so blending toward it
+   would average across a badge -- which is the thing this change removes. */
+const ANCHORS = [
+  { share: 0.20, want: 100 },   // ANCHOR_LOW  -> best
+  { share: 0.95, want: 0 },     // ANCHOR_HIGH -> worst
+  { share: 0.575, want: 50 },   // midpoint
+  { share: 0.05, want: 100 },   // below the low anchor clamps, never exceeds 100
+  { share: 1.00, want: 0 },     // above the high anchor clamps, never goes negative
+];
+for (const c of ANCHORS) {
+  const got = VA.complaintScore(c.share);
+  if (Math.abs(got - c.want) > 1e-9) {
+    throw new Error(`complaintScore(${c.share}) = ${got}, want ${c.want}`);
+  }
+}
+
+const minInputs = { ...inputs, complaint_min_n: 40 };
+const evidenced = { reliability: 100, complaintSeverity: 0.95, complaintN: 500 };
+const thin     = { reliability: 100, complaintSeverity: 0.95, complaintN: 39 };
+const none     = { reliability: 100, complaintSeverity: null, complaintN: 0 };
+
+if (VA.repairReliability(evidenced, minInputs) !== 0) {
+  throw new Error('a vehicle above the threshold must take its own evidence, '
+    + 'not the prior');
+}
+if (VA.repairReliability(thin, minInputs) !== 100) {
+  throw new Error('a vehicle one complaint below the threshold must take the prior');
+}
+if (VA.repairReliability(none, minInputs) !== 100) {
+  throw new Error('a vehicle with no complaint data must take the prior');
+}
+/* The off switch is a large number, not zero -- opposite of the spread
+   ratio, whose neutral is 1. Getting this backwards silently sends every
+   vehicle to its evidence instead of away from it. */
+const off = { ...inputs, complaint_min_n: 1e9 };
+if (VA.repairReliability(evidenced, off) !== 100) {
+  throw new Error('an impossibly high complaint_min_n must send every vehicle '
+    + 'to the prior');
+}
+console.log('ok: per-model evidence above the threshold, prior below it');
