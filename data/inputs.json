@@ -18,6 +18,7 @@
     "over_150k": 0.1
   },
   "repair_cost_spread_ratio": 2.66,
+  "complaint_min_n": 40,
   "financing_mode": "cash",
   "cash_opportunity_rate": 0.045,
   "loan_apr": 0.065,

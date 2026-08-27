@@ -34,6 +34,48 @@ var VA = (function () {
     return total / (sell - buy);
   }
 
+  /* Fixed anchors, deliberately not the fleet's own min and max: a
+     fleet-relative rescale would move every vehicle's cost whenever a row is
+     added. Shares in the data run 0.2228 (Toyota Venza) to 0.9615 (Ford
+     F-150), so the anchors do NOT bracket the range: the F-150 sits above
+     ANCHOR_HIGH and scores 0 by clamping, which is the intended behavior --
+     an outlier clamps rather than rescaling its peers. No row clamps today:
+     the highest share among rows clearing complaint_min_n is 0.9144
+     (Escalade ESV), and the F-150's 26 complaints keep it on the prior. */
+  var COMPLAINT_ANCHOR_LOW = 0.20, COMPLAINT_ANCHOR_HIGH = 0.95;
+
+  function complaintScore(share) {
+    var s = (COMPLAINT_ANCHOR_HIGH - share)
+          / (COMPLAINT_ANCHOR_HIGH - COMPLAINT_ANCHOR_LOW);
+    return Math.max(0, Math.min(1, s)) * 100;
+  }
+
+  function hasOwnEvidence(v, inp) {
+    /* Turns off by raising complaint_min_n above every count, not by zeroing
+       it -- the opposite of repair_cost_spread_ratio, whose neutral is 1. */
+    return v.complaintSeverity !== null && v.complaintSeverity !== undefined
+        && v.complaintN >= inp.complaint_min_n;
+  }
+
+  function repairBasis(v, inp) {
+    /* The label the page and the export both show. Derived from the same
+       predicate that chooses the figure, not a second copy of it -- two
+       comparisons that must agree will eventually not. */
+    return hasOwnEvidence(v, inp) ? 'measured' : 'judgment';
+  }
+
+  function repairReliability(v, inp) {
+    /* Per-model evidence wins wherever the model has enough of its own
+       complaints to describe it. The prior is a fallback for the rows that
+       have none, NOT a weight applied to the rows that do: it is
+       brand-shaped, Toyota 85-100 against Jeep 17.4-42.4 with no overlap, so
+       pulling a measured figure toward it averages across a badge. */
+    if (hasOwnEvidence(v, inp)) {
+      return complaintScore(v.complaintSeverity);
+    }
+    return v.reliability;
+  }
+
   function repairMultiplier(v, inp) {
     /* Geometric around reliability 50, with the exponent over the full
        0-100 scale, so inp.repair_cost_spread_ratio IS the worst-to-best
@@ -46,7 +88,8 @@ var VA = (function () {
        Anchored at reliability 50 rather than at the fleet's median, because
        costPerMile sees one vehicle at a time: a fleet-relative anchor would
        move every vehicle's cost whenever a row is added. */
-    return Math.pow(inp.repair_cost_spread_ratio, (50 - v.reliability) / 100);
+    return Math.pow(inp.repair_cost_spread_ratio,
+                    (50 - repairReliability(v, inp)) / 100);
   }
 
   function resaleMultiplier(v, inp) {
@@ -108,6 +151,10 @@ var VA = (function () {
   return {
     retentionIndex: retentionIndex,
     repairReserve: repairReserve,
+    complaintScore: complaintScore,
+    hasOwnEvidence: hasOwnEvidence,
+    repairBasis: repairBasis,
+    repairReliability: repairReliability,
     repairMultiplier: repairMultiplier,
     resaleMultiplier: resaleMultiplier,
     buyPrice: buyPrice,

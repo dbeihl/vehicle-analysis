@@ -48,6 +48,10 @@ def main():
 
     check_input_ranges()
     check_collapse_order()
+    check_complaint_classification()
+    check_complaint_columns()
+    check_complaint_model_years(real)
+    check_fetch_refusal()
     check_export()
     check_price_resolution()
     check_emitted_schema(real)
@@ -560,6 +564,308 @@ def check_readme_counts(rows):
     pattern = (r'\*\*(?<!\d)' + str(observed) + r'(?!\d) of the (?<!\d)'
                + str(len(rows)) + r'(?!\d) rows carry an observed price today\.\*\*')
     assert re.search(pattern, readme), f'README is stale: expected "{claim}"'
+
+
+def check_complaint_classification():
+    """is_expensive() must key off the subsystem, not the whole string.
+
+    NHTSA returns a comma-separated component list, so a complaint naming
+    both a cosmetic and an expensive subsystem is expensive. Matching the
+    raw string with `in` would also catch 'ENGINE' inside 'ENGINE AND
+    ENGINE COOLING' by accident and miss 'POWER TRAIN' entirely when it
+    arrives second in the list.
+    """
+    import fetch_complaints as fc
+    for field in ('ENGINE', 'POWER TRAIN', 'SEATS, ENGINE',
+                  'ENGINE AND ENGINE COOLING', 'SERVICE BRAKES, HYDRAULIC'):
+        assert fc.is_expensive(field), f'{field!r} should count as expensive'
+    for field in ('SEATS', 'STRUCTURE', 'UNKNOWN OR OTHER', '', 'EXTERIOR LIGHTING'):
+        assert not fc.is_expensive(field), f'{field!r} should not count as expensive'
+
+    # A component that merely CONTAINS an expensive subsystem's name is not
+    # that subsystem. This is the case that separates split-then-prefix from
+    # substring matching -- every other fixture in this test passes under
+    # both, so without it the function's actual logic is untested.
+    assert not fc.is_expensive('CHECK ENGINE INDICATOR LAMP'), \
+        'a component merely containing "ENGINE" is not an engine complaint'
+    assert not fc.is_expensive('BACKUP CAMERA, EXTERIOR LIGHTING'), \
+        'no part of this list starts with an expensive subsystem'
+
+    # A share is a ratio, so it must not move with the number of complaints.
+    few = [{'components': 'ENGINE'}, {'components': 'SEATS'}]
+    many = [{'components': 'ENGINE'}] * 50 + [{'components': 'SEATS'}] * 50
+    assert fc.severity_share(few) == fc.severity_share(many) == 0.5, \
+        'severity share must be volume-independent'
+
+    # Zero complaints is not a share of zero, and the column writer has to
+    # survive that: formatting None crashed main() AFTER the multi-minute
+    # fetch had already written complaints.json, so the run looked half-done
+    # and the fix was invisible until the next full refetch.
+    assert fc.severity_share([]) is None, \
+        'a nameplate with no complaints has no share, not a share of zero'
+    assert fc.columns_for({'severity_share': None, 'n': 0, 'years': [2019]}) \
+        == ('', '', ''), 'a missing share must write three empty columns, not raise'
+    assert fc.columns_for(None) == ('', '', ''), \
+        'a nameplate with no entry at all must write three empty columns'
+    assert fc.columns_for({'severity_share': 0.6, 'n': 120, 'years': [2019, 2023]}) \
+        == ('0.6000', '120', '2019|2023'), \
+        'a complete entry must still write all three columns'
+    print('  ok: complaint severity classification')
+
+
+def check_complaint_columns():
+    """A partial complaint record must be rejected, not half-used.
+
+    Same rule the price columns already follow: metadata claiming provenance
+    the figure does not have reads exactly like a verified figure once it
+    reaches the page.
+    """
+    base = dict(price='20000', category='Test cat', name='T', trim='unspecified')
+    full = dict(base, complaint_severity_share='0.6', complaint_n='120',
+                complaint_years='2019|2021|2023')
+    assert not build.price_problems([full]), \
+        'a complete complaint record must pass'
+    for missing in ('complaint_severity_share', 'complaint_n', 'complaint_years'):
+        partial = dict(full)
+        partial[missing] = ''
+        assert build.price_problems([partial]), \
+            f'a complaint record missing {missing} must be rejected'
+    # A share is a fraction. 60 is a percentage someone forgot to divide.
+    assert build.price_problems([dict(full, complaint_severity_share='60')]), \
+        'a severity share outside 0-1 must be rejected'
+    # The count is what complaint_min_n is compared against, so it decides
+    # whether a row is described by its own evidence or by the brand prior.
+    # Unvalidated, a bad one either crashes at int(float(...)) in
+    # build_models() or quietly misbehaves against the threshold -- '12.5'
+    # truncates to 12, a negative sorts below every threshold forever.
+    for bad in ('twelve', '', '12.5', '-1', '1e3'):
+        # '' is caught by the all-or-nothing rule above; the rest have to be
+        # caught by a check of their own.
+        assert build.price_problems([dict(full, complaint_n=bad)]), \
+            f'complaint_n of {bad!r} must be rejected'
+    assert not build.price_problems([dict(full, complaint_n='0')]), \
+        'zero complaints is a real count and must pass'
+    print('  ok: complaint column provenance')
+
+
+def check_complaint_model_years(real):
+    """A record covering years this row does not describe is not its evidence.
+
+    Three rows in the dataset name a generation or a powertrain -- 'Nissan
+    Pathfinder (2022+)', 'Toyota Tundra (2007-2021 5.7 V8)' -- and
+    fetch_complaints.py strips the parenthetical before querying NHTSA, so
+    their cached records span model years belonging to the other generation.
+    A row like that carried a `measured` badge over a different vehicle's
+    complaints, which is the exact defect the complaint evidence exists to
+    remove.
+
+    Built from a real row so every field build_models() reads is present, with
+    only the complaint columns varied: the two cases must differ by the
+    subset check and nothing else, or a pass proves nothing about it.
+
+    The fallback half of the claim is checked in engine.js under Node rather
+    than asserted from the Python side. "Emitted with a null severity" and
+    "therefore takes the prior" are two different statements, and only the
+    engine can answer the second one.
+    """
+    import json
+    import shutil
+    import subprocess
+
+    base = dict(real[0], name='Gen', trim='unspecified', trim_name='',
+                observed_price='', price_year='', price_source='',
+                msrp='', msrp_year='', msrp_trim='', msrp_source='',
+                reliability=42.0, complaint_severity_share='0.6',
+                complaint_n='120')
+
+    # The cached record reaches past the years this row describes: 2019 and
+    # 2021 are the previous generation.
+    mismatched = dict(base, complaint_years='2019|2021|2023',
+                      complaint_model_years='2023')
+    # Cached years inside the curated set, the case that must stay measured.
+    # Both an exact match and a strict subset, because an implementation
+    # comparing the two sets with == would pass the first and fail the second.
+    exact = dict(base, complaint_years='2019|2021',
+                 complaint_model_years='2019|2021')
+    strict = dict(base, complaint_years='2019',
+                  complaint_model_years='2019|2021')
+    # No curated column at all: the default sample is valid, which is what
+    # 74 of the 79 rows look like.
+    default = dict(base, complaint_years='2019|2021|2023',
+                   complaint_model_years='')
+
+    emitted = {m['name']: m for m in build.build_models(
+        [dict(mismatched, name='mismatched'), dict(exact, name='exact'),
+         dict(strict, name='strict'), dict(default, name='default')],
+        build.INPUTS)}
+
+    assert emitted['mismatched']['complaintSeverity'] is None, (
+        'a cached record covering model years this row does not describe must '
+        'not be emitted as its severity -- it is partly another generation\'s '
+        'complaints')
+    # The record is quarantined, not deleted. Dropping the columns would hide
+    # that a stale record exists and needs a narrower refetch.
+    assert emitted['mismatched']['complaintN'] == 120, \
+        'the count must stay visible on a quarantined row'
+    assert build.complaint_years_mismatch(mismatched), \
+        'complaint_years_mismatch must report the mismatch it acted on'
+    notes = build.complaint_notes([mismatched])
+    assert len(notes) == 1 and 'Gen' in notes[0], \
+        f'the build must report the quarantined row by name; got: {notes}'
+
+    for label in ('exact', 'strict', 'default'):
+        assert emitted[label]['complaintSeverity'] == 0.6, (
+            f'{label}: cached years within the curated set are this row\'s own '
+            f'evidence and must be emitted unchanged, got '
+            f'{emitted[label]["complaintSeverity"]!r}')
+        assert not build.complaint_notes([{'exact': exact, 'strict': strict,
+                                           'default': default}[label]]), \
+            f'{label}: a row whose years fit must not be reported as mismatched'
+
+    # Now the consequence, in the engine that ships. The mismatched row must
+    # land on its prior (42.0, set above so it cannot be confused with the
+    # empirical score) and the subset row on its own complaint evidence.
+    node = shutil.which('node')
+    assert node, 'node is required to check the complaint fallback and was not found'
+    root = pathlib.Path(__file__).parent
+    script = root / 'complaint-fallback-check.js'
+    payload = root / 'complaint-fallback-models.json'
+    script.write_text(
+        "const { readFileSync, writeFileSync } = require('fs');\n"
+        "const VA = require('./engine.js');\n"
+        "const p = JSON.parse(readFileSync(process.argv[2], 'utf8'));\n"
+        "const out = {};\n"
+        "for (const m of p.models) {\n"
+        "  out[m.name] = { basis: VA.repairBasis(m, p.inputs),\n"
+        "                  rel: VA.repairReliability(m, p.inputs) };\n"
+        "}\n"
+        "writeFileSync(process.argv[3], JSON.stringify(out));\n")
+    result = root / 'complaint-fallback-out.json'
+    payload.write_text(json.dumps({'models': list(emitted.values()),
+                                   'inputs': build.INPUTS}))
+    try:
+        r = subprocess.run([node, str(script), str(payload), str(result)],
+                           cwd=root, capture_output=True, text=True)
+        assert r.returncode == 0, f'engine.js failed:\n{r.stdout}{r.stderr}'
+        got = json.loads(result.read_text())
+    finally:
+        script.unlink(missing_ok=True)
+        payload.unlink(missing_ok=True)
+        result.unlink(missing_ok=True)
+
+    assert got['mismatched'] == {'basis': 'judgment', 'rel': 42.0}, (
+        'a quarantined row must fall back to its prior exactly as a row with '
+        f'no complaint data does; got {got["mismatched"]}')
+    for label in ('exact', 'strict', 'default'):
+        assert got[label]['basis'] == 'measured', (
+            f'{label}: a row whose cached years fit must still be measured; '
+            f'got {got[label]}')
+        assert got[label]['rel'] != 42.0, \
+            f'{label}: a measured row must not be reading the prior'
+
+    # The next fetch has to ask for the curated years. Without this the column
+    # only quarantines a wrong-generation record, permanently -- the refetch
+    # would keep returning the same years and the row would never recover.
+    import fetch_complaints as fc
+
+    jobs = dict(fc.jobs_from([
+        dict(name='Qualified', complaint_model_years='2023'),
+        dict(name='Whole nameplate', complaint_model_years='')]))
+    assert jobs['Qualified'] == [2023], \
+        f'a curated row must be queried for its own years, got {jobs["Qualified"]}'
+    assert jobs['Whole nameplate'] == list(fc.YEARS), \
+        'a row with no curated years must keep the default sample'
+
+    asked = []
+    real_fetch = fc.fetch
+    fc.fetch = lambda make, model, year: (asked.append((model, year)), ([], 'ok'))[1]
+    try:
+        fc.one(('Nissan Pathfinder (2022+)', [2023]))
+    finally:
+        fc.fetch = real_fetch
+    assert asked == [('Pathfinder', 2023)], \
+        f'one() must query only the years it was handed, asked: {asked}'
+    print('  ok: a complaint record spanning the wrong generation falls back')
+
+
+def check_fetch_refusal():
+    """A degraded fetch must not overwrite the committed data.
+
+    fetch_complaints.py used to write both files and warn afterwards, so a
+    year that timed out simply went missing from the persisted count. That
+    can drop a nameplate below complaint_min_n, flip it from measured to
+    judgment and change its cost, with the only trace in console output
+    nobody reads later. The cached files are the better data.
+
+    Driven through persist() with a temp root -- the refusal is a property of
+    what gets written, so the test writes real files and reads them back
+    rather than trusting a return value.
+    """
+    import contextlib
+    import io
+    import shutil
+    import tempfile
+
+    import fetch_complaints as fc
+
+    cached_json = '{"CACHED": 1}\n'
+    cached_csv = 'name,complaint_severity_share,complaint_n,complaint_years\n' \
+                 'Chevrolet Tahoe,0.7568,740,2019|2021|2023\n'
+    entry = {'severity_share': 0.5, 'n': 8, 'years': [2019]}
+
+    def fresh_root():
+        root = pathlib.Path(tempfile.mkdtemp())
+        (root / 'data').mkdir()
+        (root / 'data' / 'complaints.json').write_text(cached_json)
+        (root / 'data' / 'vehicles.csv').write_text(cached_csv)
+        return root
+
+    # Degraded: refuse, keep both files byte-for-byte, and say enough that a
+    # reader knows what failed and how to override it on purpose.
+    root = fresh_root()
+    try:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = fc.persist({'Chevrolet Tahoe': entry}, {'Ford F-150': 2}, root=root)
+        said = buf.getvalue()
+        assert code != 0, 'a run with a failed query must exit non-zero'
+        assert (root / 'data' / 'complaints.json').read_text() == cached_json, \
+            'a degraded run overwrote data/complaints.json'
+        assert (root / 'data' / 'vehicles.csv').read_text() == cached_csv, \
+            'a degraded run rewrote the complaint columns in data/vehicles.csv'
+        assert 'Ford F-150' in said, \
+            'the refusal must name the nameplate that failed'
+        assert '--allow-partial' in said, \
+            'the refusal must say how to take the partial data deliberately'
+    finally:
+        shutil.rmtree(root)
+
+    # Clean: the same call must actually write, or the check above proves
+    # nothing -- a persist() that never writes would pass it too.
+    root = fresh_root()
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = fc.persist({'Chevrolet Tahoe': entry}, {}, root=root)
+        assert code == 0, 'a clean run must succeed'
+        assert (root / 'data' / 'complaints.json').read_text() != cached_json, \
+            'a clean run did not rewrite data/complaints.json'
+        assert '0.5000,8,2019' in (root / 'data' / 'vehicles.csv').read_text(), \
+            'a clean run did not rewrite the complaint columns'
+    finally:
+        shutil.rmtree(root)
+
+    # The override exists and works, or the refusal is a dead end.
+    root = fresh_root()
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = fc.persist({'Chevrolet Tahoe': entry}, {'Ford F-150': 2},
+                              root=root, allow_partial=True)
+        assert code == 0, '--allow-partial must let a degraded run through'
+        assert (root / 'data' / 'complaints.json').read_text() != cached_json, \
+            '--allow-partial must actually write'
+    finally:
+        shutil.rmtree(root)
+    print('  ok: a degraded complaint fetch refuses to persist')
 
 
 if __name__ == '__main__':
