@@ -49,7 +49,7 @@ effective(v) = empirical(v)      when n(v) >= COMPLAINT_MIN
              = reliability(v)    otherwise
 ```
 
-**`COMPLAINT_MIN = 40`**, a new input `complaint_min_n`. Sixty of the 79 nameplates clear it; nineteen fall back to the prior.
+**`COMPLAINT_MIN = 40`**, a new input `complaint_min_n`. Sixty of the 79 nameplates clear it. Two of those sixty are then withheld by the model-year rule below, so 58 rows are measured and 21 take the prior.
 
 An earlier draft of this spec blended the two by shrinkage — `n / (n + k)` — so that a vehicle's estimate was pulled toward the brand prior in proportion to how little evidence it had. That is rejected. The prior is brand-shaped: Toyota spans 85–100 and Jeep 17.4–42.4 with no overlap, so shrinking toward it is averaging across a badge, and the whole point of this change is that a Tundra and a RAV4 are different vehicles. Per-model evidence wins wherever it exists; the prior is the fallback for where it does not, not a gravitational pull on where it does.
 
@@ -70,19 +70,32 @@ Three columns join `data/vehicles.csv` beside `reliability`, giving it the prove
 | `complaint_severity_share` | Fraction of this vehicle's complaints naming an expensive subsystem |
 | `complaint_n` | Total complaints across the sampled model years |
 | `complaint_years` | Which model years NHTSA actually answered for |
+| `complaint_model_years` | Curated: the model years whose complaints represent this row. Blank means the default sample is valid |
 
-`build.py` rejects a row carrying any one of the three without the others, matching how it already rejects an `observed_price` without its year, source, and odometer.
+`build.py` rejects a row carrying any one of the first three without the others, matching how it already rejects an `observed_price` without its year, source, and odometer.
+
+### A row that names a generation is not the whole nameplate
+
+Several rows describe one generation or one powertrain rather than a nameplate: `Nissan Pathfinder (2022+)`, `Toyota Tundra (2007-2021 5.7 V8)`, `Toyota Sequoia (pre-2023 5.7 V8)`. `split_name()` drops the parenthetical before querying, so the sampled years came back for whatever NHTSA has under that nameplate. The Pathfinder row describes the 2022+ truck and was scored on 2019, 2021 and 2023, two of which are the CVT-era vehicle the row was split out to avoid. A `measured` badge over another generation's complaints is the same defect this change exists to remove, one level down.
+
+`complaint_model_years` is the fix, and it is curated rather than parsed out of the name. Which model years a row means is a judgment about vehicles, not a string operation, and this repo already records that kind of judgment instead of inferring it — the price and EPA columns carry a human-chosen source for the same reason.
+
+The rule is a subset test, applied in `build_models()`: when a row sets `complaint_model_years` and its cached `complaint_years` are not contained in that set, the record covers years that do not describe this row, and `complaintSeverity` is emitted as `None`. The engine then falls back to the prior exactly as it does for a row with no data. The columns stay in the CSV. The record is quarantined, not deleted, because a stale record that needs a narrower refetch has to stay visible, and `build.py` prints a note per affected row on both the write and `--check` paths.
+
+`fetch_complaints.py` reads the same column and queries only those model years, so the next run repairs the affected rows and the quarantine lifts on its own.
+
+Two rows are quarantined today, the Tundra (n=478) and the Pathfinder (n=175). The Frontier is a third mismatch but was already below the threshold at n=28, so it does not change the counts. The Sequoia and the Maverick (2.0T) carry the column with cached years already inside it and are unaffected.
 
 ### Coverage is two-tier, and the page says so
 
-Nineteen of the 79 fall back to the prior: twelve have no complaint data at all, and seven more sit below the forty-complaint threshold.
+Twenty-one of the 79 fall back to the prior: twelve have no complaint data at all, seven more sit below the forty-complaint threshold, and two carry a record that spans the wrong generation.
 
 This is the failure mode the README already names for prices: "A partially corrected dataset is more misleading than a uniformly wrong one." The mitigation is the one the repo already uses — the `listed` / `scaled` / `estimate` badges. The detail panel gains a badge on the reliability figure:
 
 | Badge | Condition | Today |
 | ----- | --------- | ----- |
-| `measured` | `n >= complaint_min_n`; the figure is this model's own complaint record | 60 |
-| `judgment` | below the threshold or no complaint data; the brand-shaped prior stands in | 19 |
+| `measured` | `n >= complaint_min_n` and the cached years describe this row; the figure is this model's own complaint record | 58 |
+| `judgment` | below the threshold, no complaint data, or a record spanning the wrong generation; the brand-shaped prior stands in | 21 |
 
 Two badges, not three, because there is no longer a blended middle state — a row is either described by its own evidence or it is not.
 
@@ -102,6 +115,7 @@ Two badges, not three, because there is no longer a blended middle state — a r
 - A test that a vehicle with no complaint data lands at exactly its prior, and one with a large `n` lands within a point of its empirical score
 - A test that severity share of 0.20 and 0.95 map to 100 and 0, and that values outside the anchors clamp rather than exceeding the scale
 - `build.py` rejects a partial complaint record, proven by a rejecting case
+- A test that a row whose cached `complaint_years` reach outside its `complaint_model_years` is emitted with a null severity and lands on its prior in engine.js, and that a row whose years sit inside it is untouched — both verified by mutation, since a subset test that never fires is indistinguishable from no test
 - A recorded before/after ranking diff in the PR, on the `full` variant at the shipped threshold
 - A test that a vehicle one complaint below the threshold takes the prior and one at the threshold takes its own evidence, so the boundary is exercised from both sides
 

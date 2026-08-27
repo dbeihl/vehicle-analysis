@@ -34,6 +34,7 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
+import build
 import fetch_recalls
 
 ROOT = pathlib.Path(__file__).parent
@@ -115,7 +116,32 @@ def fetch(make, model, year, attempts=4):
     return None, 'failed'
 
 
-def one(name):
+def jobs_from(rows):
+    """(nameplate, model years to query) pairs, one per nameplate.
+
+    split_name() drops the parenthetical, so 'Nissan Pathfinder (2022+)' is
+    queried as plain Pathfinder and the default YEARS sample would answer for
+    the previous generation as well. A row that names a generation or a
+    powertrain carries `complaint_model_years`, the curated list of model
+    years that actually represent it; this is where that column stops the
+    wrong years from being fetched in the first place, rather than only being
+    quarantined afterwards by build.py.
+
+    Rows sharing a nameplate are one query and must agree on its years --
+    disagreeing rows would silently give one of them the other's evidence.
+    """
+    jobs = {}
+    for r in rows:
+        curated = sorted(int(y) for y in build.year_set(r.get('complaint_model_years')))
+        years = curated or list(YEARS)
+        if jobs.setdefault(r['name'], years) != years:
+            sys.exit(f'{r["name"]}: rows disagree on complaint_model_years '
+                     f'({jobs[r["name"]]} vs {years}); one nameplate is one '
+                     f'query and cannot be fetched for two different year sets')
+    return sorted(jobs.items())
+
+
+def one(job):
     """Return (name, entry, failed_years).
 
     'no_data' and 'failed' both skip the year, but they are not the same
@@ -123,11 +149,12 @@ def one(name):
     we could not ask. Counting failures separately is what keeps a degraded
     run from reading like a vehicle with little history.
     """
+    name, want = job
     make, model = fetch_recalls.split_name(name)
     if not make:
         return name, None, 0
     got, years, failed = [], [], 0
-    for y in YEARS:
+    for y in want:
         res, status = fetch(make, model, y)
         if status == 'ok':
             got.extend(res)
@@ -140,16 +167,23 @@ def one(name):
                   'years': years}, failed
 
 
-def collect(names):
-    """Fetch every nameplate. Returns (entries, failures-by-nameplate)."""
+def collect(jobs):
+    """Fetch every nameplate. Returns (entries, failures-by-nameplate).
+
+    Takes (name, years) pairs from jobs_from(), not bare names: the sampled
+    years are per-nameplate now, so the progress line counts against that
+    nameplate's own list rather than the default YEARS.
+    """
     out, failures = {}, {}
+    wanted = dict(jobs)
     with ThreadPoolExecutor(max_workers=6) as pool:
-        for name, entry, failed in pool.map(one, names):
+        for name, entry, failed in pool.map(one, jobs):
             if entry:
                 out[name] = entry
             if failed:
                 failures[name] = failed
-            note = f' -- {failed} of {len(YEARS)} model years FAILED' if failed else ''
+            note = (f' -- {failed} of {len(wanted[name])} model years FAILED'
+                    if failed else '')
             print(f'{name}: {entry["n"] if entry else "no data"}{note}', flush=True)
     return out, failures
 
@@ -214,8 +248,7 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else list(argv)
     allow_partial = '--allow-partial' in argv
     rows = list(csv.DictReader(open(ROOT / 'data' / 'vehicles.csv')))
-    names = sorted({r['name'] for r in rows})
-    out, failures = collect(names)
+    out, failures = collect(jobs_from(rows))
     return persist(out, failures, allow_partial=allow_partial)
 
 

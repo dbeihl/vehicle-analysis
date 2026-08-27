@@ -50,6 +50,7 @@ def main():
     check_collapse_order()
     check_complaint_classification()
     check_complaint_columns()
+    check_complaint_model_years(real)
     check_fetch_refusal()
     check_export()
     check_price_resolution()
@@ -645,6 +646,146 @@ def check_complaint_columns():
     assert not build.price_problems([dict(full, complaint_n='0')]), \
         'zero complaints is a real count and must pass'
     print('  ok: complaint column provenance')
+
+
+def check_complaint_model_years(real):
+    """A record covering years this row does not describe is not its evidence.
+
+    Three rows in the dataset name a generation or a powertrain -- 'Nissan
+    Pathfinder (2022+)', 'Toyota Tundra (2007-2021 5.7 V8)' -- and
+    fetch_complaints.py strips the parenthetical before querying NHTSA, so
+    their cached records span model years belonging to the other generation.
+    A row like that carried a `measured` badge over a different vehicle's
+    complaints, which is the exact defect the complaint evidence exists to
+    remove.
+
+    Built from a real row so every field build_models() reads is present, with
+    only the complaint columns varied: the two cases must differ by the
+    subset check and nothing else, or a pass proves nothing about it.
+
+    The fallback half of the claim is checked in engine.js under Node rather
+    than asserted from the Python side. "Emitted with a null severity" and
+    "therefore takes the prior" are two different statements, and only the
+    engine can answer the second one.
+    """
+    import json
+    import shutil
+    import subprocess
+
+    base = dict(real[0], name='Gen', trim='unspecified', trim_name='',
+                observed_price='', price_year='', price_source='',
+                msrp='', msrp_year='', msrp_trim='', msrp_source='',
+                reliability=42.0, complaint_severity_share='0.6',
+                complaint_n='120')
+
+    # The cached record reaches past the years this row describes: 2019 and
+    # 2021 are the previous generation.
+    mismatched = dict(base, complaint_years='2019|2021|2023',
+                      complaint_model_years='2023')
+    # Cached years inside the curated set, the case that must stay measured.
+    # Both an exact match and a strict subset, because an implementation
+    # comparing the two sets with == would pass the first and fail the second.
+    exact = dict(base, complaint_years='2019|2021',
+                 complaint_model_years='2019|2021')
+    strict = dict(base, complaint_years='2019',
+                  complaint_model_years='2019|2021')
+    # No curated column at all: the default sample is valid, which is what
+    # 74 of the 79 rows look like.
+    default = dict(base, complaint_years='2019|2021|2023',
+                   complaint_model_years='')
+
+    emitted = {m['name']: m for m in build.build_models(
+        [dict(mismatched, name='mismatched'), dict(exact, name='exact'),
+         dict(strict, name='strict'), dict(default, name='default')],
+        build.INPUTS)}
+
+    assert emitted['mismatched']['complaintSeverity'] is None, (
+        'a cached record covering model years this row does not describe must '
+        'not be emitted as its severity -- it is partly another generation\'s '
+        'complaints')
+    # The record is quarantined, not deleted. Dropping the columns would hide
+    # that a stale record exists and needs a narrower refetch.
+    assert emitted['mismatched']['complaintN'] == 120, \
+        'the count must stay visible on a quarantined row'
+    assert build.complaint_years_mismatch(mismatched), \
+        'complaint_years_mismatch must report the mismatch it acted on'
+    notes = build.complaint_notes([mismatched])
+    assert len(notes) == 1 and 'Gen' in notes[0], \
+        f'the build must report the quarantined row by name; got: {notes}'
+
+    for label in ('exact', 'strict', 'default'):
+        assert emitted[label]['complaintSeverity'] == 0.6, (
+            f'{label}: cached years within the curated set are this row\'s own '
+            f'evidence and must be emitted unchanged, got '
+            f'{emitted[label]["complaintSeverity"]!r}')
+        assert not build.complaint_notes([{'exact': exact, 'strict': strict,
+                                           'default': default}[label]]), \
+            f'{label}: a row whose years fit must not be reported as mismatched'
+
+    # Now the consequence, in the engine that ships. The mismatched row must
+    # land on its prior (42.0, set above so it cannot be confused with the
+    # empirical score) and the subset row on its own complaint evidence.
+    node = shutil.which('node')
+    assert node, 'node is required to check the complaint fallback and was not found'
+    root = pathlib.Path(__file__).parent
+    script = root / 'complaint-fallback-check.js'
+    payload = root / 'complaint-fallback-models.json'
+    script.write_text(
+        "const { readFileSync, writeFileSync } = require('fs');\n"
+        "const VA = require('./engine.js');\n"
+        "const p = JSON.parse(readFileSync(process.argv[2], 'utf8'));\n"
+        "const out = {};\n"
+        "for (const m of p.models) {\n"
+        "  out[m.name] = { basis: VA.repairBasis(m, p.inputs),\n"
+        "                  rel: VA.repairReliability(m, p.inputs) };\n"
+        "}\n"
+        "writeFileSync(process.argv[3], JSON.stringify(out));\n")
+    result = root / 'complaint-fallback-out.json'
+    payload.write_text(json.dumps({'models': list(emitted.values()),
+                                   'inputs': build.INPUTS}))
+    try:
+        r = subprocess.run([node, str(script), str(payload), str(result)],
+                           cwd=root, capture_output=True, text=True)
+        assert r.returncode == 0, f'engine.js failed:\n{r.stdout}{r.stderr}'
+        got = json.loads(result.read_text())
+    finally:
+        script.unlink(missing_ok=True)
+        payload.unlink(missing_ok=True)
+        result.unlink(missing_ok=True)
+
+    assert got['mismatched'] == {'basis': 'judgment', 'rel': 42.0}, (
+        'a quarantined row must fall back to its prior exactly as a row with '
+        f'no complaint data does; got {got["mismatched"]}')
+    for label in ('exact', 'strict', 'default'):
+        assert got[label]['basis'] == 'measured', (
+            f'{label}: a row whose cached years fit must still be measured; '
+            f'got {got[label]}')
+        assert got[label]['rel'] != 42.0, \
+            f'{label}: a measured row must not be reading the prior'
+
+    # The next fetch has to ask for the curated years. Without this the column
+    # only quarantines a wrong-generation record, permanently -- the refetch
+    # would keep returning the same years and the row would never recover.
+    import fetch_complaints as fc
+
+    jobs = dict(fc.jobs_from([
+        dict(name='Qualified', complaint_model_years='2023'),
+        dict(name='Whole nameplate', complaint_model_years='')]))
+    assert jobs['Qualified'] == [2023], \
+        f'a curated row must be queried for its own years, got {jobs["Qualified"]}'
+    assert jobs['Whole nameplate'] == list(fc.YEARS), \
+        'a row with no curated years must keep the default sample'
+
+    asked = []
+    real_fetch = fc.fetch
+    fc.fetch = lambda make, model, year: (asked.append((model, year)), ([], 'ok'))[1]
+    try:
+        fc.one(('Nissan Pathfinder (2022+)', [2023]))
+    finally:
+        fc.fetch = real_fetch
+    assert asked == [('Pathfinder', 2023)], \
+        f'one() must query only the years it was handed, asked: {asked}'
+    print('  ok: a complaint record spanning the wrong generation falls back')
 
 
 def check_fetch_refusal():

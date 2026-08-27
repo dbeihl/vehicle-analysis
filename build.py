@@ -113,6 +113,61 @@ def category_ceiling(rows, category, exclude):
     return max(peers) if peers else None
 
 
+def year_set(raw):
+    """A pipe-separated model-year list as a set of strings. Empty when blank."""
+    return {y.strip() for y in str(raw or '').split('|') if y.strip()}
+
+
+def complaint_years_mismatch(v):
+    """True when the cached complaint record covers years this row does not describe.
+
+    Some nameplates in this dataset are one generation or one powertrain of a
+    model, spelled out in the name: 'Nissan Pathfinder (2022+)', 'Toyota
+    Tundra (2007-2021 5.7 V8)'. fetch_complaints.py queries NHTSA by make and
+    model with the parenthetical stripped, so a cached record can span model
+    years belonging to the OTHER generation -- the Pathfinder row describes
+    the 2022+ truck and was scored on 2019, 2021 and 2023, two of which are
+    the CVT-era vehicle it exists to distinguish itself from.
+
+    `complaint_model_years` is the curated answer: the model years whose
+    complaints actually represent this row. Curated, not parsed out of the
+    name -- the same standing rule the price and EPA provenance columns
+    follow, because a mapping like this is a judgment a human makes and
+    records, not something a string match can be trusted to infer.
+
+    Blank means the default sampled set is valid, which is true for most rows.
+    A row with no cached record at all has nothing to mismatch: the empty set
+    is a subset of anything, so the column merely steers the next fetch.
+    """
+    curated = year_set(v.get('complaint_model_years'))
+    if not curated:
+        return False
+    return not year_set(v.get('complaint_years')) <= curated
+
+
+def complaint_notes(rows):
+    """One line per row whose complaint record is not this row's evidence.
+
+    A note, deliberately, not a problem: price_problems() exits the build, and
+    a mismatch here is a state the repo is expected to sit in between a data
+    correction and the next multi-minute fetch. Quarantining the evidence and
+    saying so is the whole behaviour -- exiting would brick the build until
+    someone re-ran the fetch, and staying silent would leave a row labelled
+    'measured' over a different vehicle's complaints, which is the defect this
+    column exists to remove.
+    """
+    notes = []
+    for v in rows:
+        if complaint_years_mismatch(v):
+            notes.append(
+                f'{v["name"]}: complaint record covers '
+                f'{v.get("complaint_years")} but this row describes '
+                f'{v.get("complaint_model_years")} -- not treated as this '
+                f'row\'s evidence; it falls back to the reliability prior '
+                f'until the next fetch narrows the years')
+    return notes
+
+
 def price_problems(rows):
     """Data-integrity checks on price provenance and row identity. Empty
     list means clean.
@@ -350,8 +405,15 @@ def build_models(rows, inp):
             'quality': num(v['quality']), 'longevity': num(v['longevity']),
             'efficiency': scale(v['mpg'], mlo, mhi),
             'reliability': num(v['reliability']),
+            # None when the cached years are not this row's years: engine.js
+            # reads a null severity as "no evidence" and falls back to the
+            # prior, which is exactly right for a record that describes a
+            # different generation. Emitted here rather than filtered
+            # upstream because this is the one choke point feeding the page,
+            # the fixture, and the engine-parity dump alike.
             'complaintSeverity': (float(v['complaint_severity_share'])
-                                  if str(v.get('complaint_severity_share', '')).strip() != ''
+                                  if (str(v.get('complaint_severity_share', '')).strip() != ''
+                                      and not complaint_years_mismatch(v))
                                   else None),
             'complaintN': (int(float(v['complaint_n']))
                            if str(v.get('complaint_n', '')).strip() != '' else 0),
@@ -500,6 +562,12 @@ def main():
 
     html, updated, models = render_current(rows)
     observed = sum(1 for m in models if m['priceBasis'] == 'observed')
+
+    # Printed on both paths. --check is what CI and a contributor run most
+    # often, and a quarantined row is a state someone has to be able to see
+    # without reading the CSV.
+    for note in complaint_notes(rows):
+        print(f'note: {note}')
 
     if args.check:
         if updated != html:
