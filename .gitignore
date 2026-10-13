@@ -4,3 +4,6 @@ build-models.json
 freeze-fixture-models.json
 freeze-fixture-cpm.json
 freeze-fixture-gen.js
+node_modules/
+test-results/
+playwright-report/
